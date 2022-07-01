@@ -1,0 +1,10 @@
+# CLion nonsense
+.idea
+cmake-build-**
+
+# OS nonsense
+.DS_store
+
+# Generator paths
+cmake_vstudio
+cmake_xcode
