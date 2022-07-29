@@ -50,14 +50,16 @@ qt5_wrap_ui(SOURCES
 qt5_add_resources(SOURCES
 		../resources.qrc)
 
-add_executable(tlm-viewer WIN32 ${SOURCES})
+add_executable(tlm-viewer ${SOURCES})
 target_sort_source_files(tlm-viewer)
 
+set_target_properties(tlm-viewer PROPERTIES WIN32_EXECUTABLE ON MACOSX_BUNDLE ON)
 set_target_properties(tlm-viewer PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/${CMAKE_BUILD_TYPE})
 set_target_properties(tlm-viewer PROPERTIES OUTPUT_NAME "Telemetry Viewer")
 
 target_compile_definitions(tlm-viewer PRIVATE ${DEFINITIONS})
 target_include_directories(tlm-viewer SYSTEM PRIVATE ${PROJECT_BINARY_DIR} ${PROJECT_SOURCE_DIR})
+target_include_directories(tlm-viewer PRIVATE ${PROJECT_SOURCE_DIR}/widgets)
 
 # Link and copy over Qt component DLLs
 foreach(_component ${QtComponents})
@@ -66,20 +68,22 @@ foreach(_component ${QtComponents})
 endforeach()
 
 # Copy over Qt resources
-set(QtResources
-		$<$<CONFIG:Debug>:bin/QtWebEngineProcessd.exe>
-		$<$<CONFIG:Debug>:resources/qtwebengine_devtools_resources.pak>
-		$<$<NOT:$<CONFIG:Debug>>:bin/QtWebEngineProcess.exe>
-		resources/icudtl.dat
-		resources/qtwebengine_resources.pak
-		resources/qtwebengine_resources_100p.pak
-		resources/qtwebengine_resources_200p.pak)
+if(WIN32)
+	set(QtResources
+			$<$<CONFIG:Debug>:bin/QtWebEngineProcessd.exe>
+			$<$<CONFIG:Debug>:resources/qtwebengine_devtools_resources.pak>
+			$<$<NOT:$<CONFIG:Debug>>:bin/QtWebEngineProcess.exe>
+			resources/icudtl.dat
+			resources/qtwebengine_resources.pak
+			resources/qtwebengine_resources_100p.pak
+			resources/qtwebengine_resources_200p.pak)
 
-foreach(_resource ${QtResources})
-	if(NOT "${_resource}" STREQUAL "")
-		add_custom_command(TARGET tlm-viewer POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different "$<TARGET_FILE_DIR:Qt5::Core>/../${_resource}" "$<TARGET_FILE_DIR:tlm-viewer>")
-	endif()
-endforeach()
+	foreach(_resource ${QtResources})
+		if(NOT "${_resource}" STREQUAL "")
+			add_custom_command(TARGET tlm-viewer POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different "$<TARGET_FILE_DIR:Qt5::Core>/../${_resource}" "$<TARGET_FILE_DIR:tlm-viewer>")
+		endif()
+	endforeach()
 
-# Copy the platform data
-add_custom_command(TARGET tlm-viewer POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_directory "$<TARGET_FILE_DIR:Qt5::Core>/../plugins/platforms" "$<TARGET_FILE_DIR:tlm-viewer>/platforms")
+	# Copy the platform data
+	add_custom_command(TARGET tlm-viewer POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_directory "$<TARGET_FILE_DIR:Qt5::Core>/../plugins/platforms" "$<TARGET_FILE_DIR:tlm-viewer>/platforms")
+endif()

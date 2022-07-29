@@ -34,7 +34,7 @@ QVariant generic_tree_item::get_data(int index) const
 generic_tree_item *generic_tree_item::insert_child(int position, const QVector<QVariant> &data, void *context)
 {
 	if(position < 0 || position > m_children.size())
-		return false;
+		return nullptr;
 
 	generic_tree_item *item = new generic_tree_item(data, context, this);
 	m_children.insert(position, item);
