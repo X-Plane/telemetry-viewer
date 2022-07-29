@@ -2,7 +2,7 @@
 #include <QStyleFactory>
 #include "widgets/document_window.h"
 
-void apply_dark_theme()
+void apply_dark_theme(QApplication &app)
 {
 	// https://gist.github.com/QuantumCD/6245215
 	QPalette palette;
@@ -21,9 +21,9 @@ void apply_dark_theme()
 	palette.setColor(QPalette::Highlight, QColor(42, 130, 218));
 	palette.setColor(QPalette::HighlightedText, Qt::black);
 
-	qApp->setPalette(palette);
-	qApp->setStyle(QStyleFactory::create("Fusion"));
-	qApp->setStyleSheet("QToolTip { color: #ffffff; background-color: #2a82da; border: 1px solid white; }");
+	app.setPalette(palette);
+	app.setStyle(QStyleFactory::create("Fusion"));
+	app.setStyleSheet("QToolTip { color: #ffffff; background-color: #2a82da; border: 1px solid white; }");
 }
 
 int main(int argc, char *argv[])
@@ -34,7 +34,7 @@ int main(int argc, char *argv[])
 	app.setApplicationName("Telemetry Analyzer");
 	app.setOrganizationName("Laminar Research");
 
-	apply_dark_theme();
+	apply_dark_theme(app);
 
 	document_window window;
 	window.show();

@@ -1,17 +1,26 @@
-cmake_minimum_required(VERSION 3.8)
+cmake_minimum_required(VERSION 3.20)
 project(Telemetry-Studio)
 
-# TODO: Dynamic look up of Qt
-if(APPLE)
-	set(CMAKE_PREFIX_PATH "~/Qt/5.11.0/clang_64")
+if(UNIX AND NOT APPLE)
+	set(LINUX TRUE)
+
+	set(IS_WIN32 0)
+	set(IS_MACOS 0)
+	set(IS_LINUX 1)
+elseif(APPLE)
+	set(MACOS TRUE)
+
+	set(IS_WIN32 0)
+	set(IS_MACOS 1)
+	set(IS_LINUX 0)
 else()
-	set(CMAKE_PREFIX_PATH "C:/Qt/5.15.0/msvc2019_64")
+	set(IS_WIN32 1)
+	set(IS_MACOS 0)
+	set(IS_LINUX 0)
 endif()
 
-set(CMAKE_CXX_STANDARD 11)
-
+set(CMAKE_CXX_STANDARD 17)
 cmake_policy(SET CMP0042 NEW)
-
 
 include(cmake/target.cmake)
 

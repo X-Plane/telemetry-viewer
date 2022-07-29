@@ -1,8 +1,7 @@
-cmake_minimum_required(VERSION 3.8)
-project(tlm-studio)
+cmake_minimum_required(VERSION 3.20)
+project(tlm-viewer)
 
 set(CMAKE_AUTORCC ON)
-
 
 set(QtComponents
 		Core
@@ -36,6 +35,11 @@ set(SOURCES
 
 add_header_files(SOURCES)
 
+set(DEFINITIONS
+	WIN=${IS_WIN32}
+	LIN=${IS_LINUX}
+	APL=${IS_MACOS})
+
 # Qt crap
 qt5_wrap_cpp(SOURCES
 		model/generic_tree_model.h
@@ -46,16 +50,19 @@ qt5_wrap_ui(SOURCES
 qt5_add_resources(SOURCES
 		../resources.qrc)
 
-add_executable(tlm-studio WIN32 ${SOURCES})
-set_target_properties(tlm-studio PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/${CMAKE_BUILD_TYPE})
-target_sort_source_files(tlm-studio)
+add_executable(tlm-viewer WIN32 ${SOURCES})
+target_sort_source_files(tlm-viewer)
 
-target_include_directories(tlm-studio SYSTEM PRIVATE ${PROJECT_BINARY_DIR} ${PROJECT_SOURCE_DIR})
+set_target_properties(tlm-viewer PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/${CMAKE_BUILD_TYPE})
+set_target_properties(tlm-viewer PROPERTIES OUTPUT_NAME "Telemetry Viewer")
+
+target_compile_definitions(tlm-viewer PRIVATE ${DEFINITIONS})
+target_include_directories(tlm-viewer SYSTEM PRIVATE ${PROJECT_BINARY_DIR} ${PROJECT_SOURCE_DIR})
 
 # Link and copy over Qt component DLLs
 foreach(_component ${QtComponents})
-	target_link_libraries(tlm-studio PRIVATE Qt5::${_component})
-	add_custom_command(TARGET tlm-studio POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different "$<TARGET_FILE:Qt5::${_component}>" "$<TARGET_FILE_DIR:tlm-studio>")
+	target_link_libraries(tlm-viewer PRIVATE Qt5::${_component})
+	add_custom_command(TARGET tlm-viewer POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different "$<TARGET_FILE:Qt5::${_component}>" "$<TARGET_FILE_DIR:tlm-viewer>")
 endforeach()
 
 # Copy over Qt resources
@@ -70,7 +77,9 @@ set(QtResources
 
 foreach(_resource ${QtResources})
 	if(NOT "${_resource}" STREQUAL "")
-		add_custom_command(TARGET tlm-studio POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different "$<TARGET_FILE_DIR:Qt5::Core>/../${_resource}" "$<TARGET_FILE_DIR:tlm-studio>")
+		add_custom_command(TARGET tlm-viewer POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different "$<TARGET_FILE_DIR:Qt5::Core>/../${_resource}" "$<TARGET_FILE_DIR:tlm-viewer>")
 	endif()
 endforeach()
 
+# Copy the platform data
+add_custom_command(TARGET tlm-viewer POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_directory "$<TARGET_FILE_DIR:Qt5::Core>/../plugins/platforms" "$<TARGET_FILE_DIR:tlm-viewer>/platforms")

@@ -7,13 +7,11 @@ macro(target_sort_source_files __TARGET)
 	foreach(__FILE ${__SOURCES})
 
 		if(EXISTS ${__FILE})
-			file(RELATIVE_PATH __RELATIVE_PATH "${${__TARGET}_SOURCE_DIR}" "${__FILE}")
+			cmake_path(RELATIVE_PATH __FILE OUTPUT_VARIABLE __RELATIVE_PATH)
 			get_filename_component(__DIRECTORY "${__RELATIVE_PATH}" PATH)
 		else()
-			set(__FULLPATH "${${__TARGET}_SOURCE_DIR}/${__FILE}")
-			get_filename_component(__FULLPATH "${__FULLPATH}" ABSOLUTE)
-
-			file(RELATIVE_PATH __RELATIVE_PATH "${${__TARGET}_SOURCE_DIR}" "${__FULLPATH}")
+			set(__ABSOLUTE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/${__FILE})
+			cmake_path(RELATIVE_PATH __ABSOLUTE_PATH OUTPUT_VARIABLE __RELATIVE_PATH)
 			get_filename_component(__DIRECTORY "${__RELATIVE_PATH}" PATH)
 		endif()
 
@@ -81,3 +79,11 @@ macro(add_header_files __SOURCE_VAR)
 	list(APPEND ${__SOURCE_VAR} ${__HEADERS})
 
 endmacro()
+
+function(target_set_name TARGET NAME)
+	set_target_properties(${__TARGET} PROPERTIES OUTPUT_NAME "${__NAME}")
+
+	foreach(__CONFIG ${CMAKE_CONFIGURATION_TYPES})
+		set_target_properties(${__TARGET} PROPERTIES OUTPUT_NAME_${__CONFIG} "${__NAME}")
+	endforeach()
+endfunction()
