@@ -106,19 +106,38 @@ void document_window::update_telemetry()
 		generic_tree_model *model = new generic_tree_model(root_item);
 
 		m_statistics_view->setModel(model);
+		m_statistics_view->update();
+
+		for(uint32_t i = 0; i < m_telemetry.statistics.size(); i ++)
+		{
+			const uint32_t index = m_telemetry.statistics.size() - 1 - i;
+			m_statistics_view->expand(model->index(index, 0, QModelIndex()));
+		}
 
 		delete old_model;
 	}
 	{
 		generic_tree_item *root_item = new generic_tree_item({"Provider", "Title"});
 
-		for(auto &provider : m_telemetry.providers)
-		{
-			generic_tree_item *child = root_item->add_child({ provider.title });
+		QVector<uint32_t> expanded;
 
-			for(auto &entry : provider.fields)
+		{
+			uint32_t index = 0;
+
+			for(auto &provider: m_telemetry.providers)
 			{
-				child->add_child({ entry.enabled, entry.title + " (" + telemetry_unit_to_string(entry.unit) + ")" }, &entry);
+				generic_tree_item *child = root_item->add_child({provider.title});
+
+				for(auto &entry: provider.fields)
+				{
+					child->add_child({entry.enabled,
+									  entry.title + " (" + telemetry_unit_to_string(entry.unit) + ")"}, &entry);
+				}
+
+				if(provider.identifier == "com.laminarresearch.test_main_class")
+					expanded.push_front(index);
+
+				index++;
 			}
 		}
 
@@ -127,6 +146,10 @@ void document_window::update_telemetry()
 		model->set_delegate(this);
 
 		m_providers_view->setModel(model);
+		m_providers_view->update();
+
+		for(auto index : expanded)
+			m_providers_view->expand(model->index(index, 0, QModelIndex()));
 
 		delete old_model;
 	}

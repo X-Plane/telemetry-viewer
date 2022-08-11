@@ -26,14 +26,18 @@ enum class telemetry_type : uint8_t
 
 	string = 15,
 
-	boolean = 20
+	boolean = 20,
+
+	vec2 = 50,
+	dvec2 = 51,
 };
 enum class telemetry_unit : uint8_t
 {
 	value = 0,
 	fps = 1,
 	time = 2,
-	memory = 3
+	memory = 3,
+	duration = 4
 };
 
 const char *telemetry_unit_to_string(telemetry_unit unit);

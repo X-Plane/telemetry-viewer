@@ -17,6 +17,8 @@ const char *telemetry_unit_to_string(telemetry_unit unit)
 			return "Time";
 		case telemetry_unit::memory:
 			return "Memory";
+		case telemetry_unit::duration:
+			return "Duration";
 	}
 
 	return "";

@@ -19,6 +19,8 @@ static inline QString get_widget_axis(telemetry_unit unit)
 			return "fpsAxis";
 		case telemetry_unit::time:
 			return "timeAxis";
+		case telemetry_unit::duration:
+			return "timeAxis";
 	}
 
 	return "valueAxis";
@@ -120,7 +122,24 @@ QString chart_widget::build_html(telemetry_provider_field *field) const
 		if(data.first > m_end) // Data is in order!
 			break;
 
-		result = result % "{x:" % QString::number(data.first) % ",y:" % QString::number(data.second.toFloat()) % "},\n";
+		QString field_data;
+
+		switch(field->unit)
+		{
+			case telemetry_unit::duration:
+			{
+				QPointF point = data.second.toPointF();
+				field_data = QString::number(point.y() - point.x());
+
+				break;
+			}
+
+			default:
+				field_data = QString::number(data.second.toFloat());
+				break;
+		}
+
+		result = result % "{x:" % QString::number(data.first) % ",y:" % field_data % "},\n";
 	}
 
 	result = result % "]\n";

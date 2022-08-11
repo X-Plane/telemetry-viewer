@@ -31,7 +31,7 @@ int main(int argc, char *argv[])
 	QCoreApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
 
 	QApplication app(argc, argv);
-	app.setApplicationName("Telemetry Analyzer");
+	app.setApplicationName("Telemetry Viewer");
 	app.setOrganizationName("Laminar Research");
 
 	apply_dark_theme(app);

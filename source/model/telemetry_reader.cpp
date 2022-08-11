@@ -169,7 +169,9 @@ enum class telemetry_command : uint8_t
 {
 	register_provider,
 	packet,
-	statistic
+	statistic,
+	amend_provider,
+	event
 };
 
 
@@ -216,6 +218,15 @@ QVariant read_variant(file_reader &reader, telemetry_type type)
 		case telemetry_type::doubv:
 		{
 			return QVariant(reader.read_double());
+		}
+
+		case telemetry_type::vec2:
+		{
+			return QVariant(QPointF(reader.read_float(), reader.read_float()));
+		}
+		case telemetry_type::dvec2:
+		{
+			return QVariant(QPointF(reader.read_double(), reader.read_double()));
 		}
 
 		case telemetry_type::string:
@@ -267,6 +278,33 @@ telemetry_container read_telemetry_data(const uint8_t *data, size_t size)
 				}
 
 				container.providers.push_back(provider);
+				break;
+			}
+
+			case telemetry_command::amend_provider:
+			{
+				uint16_t runtime_id = reader.read_uint16();
+				telemetry_provider &provider = container.find_provider(runtime_id);
+
+				provider.fields.clear();
+
+				const uint32_t fields = reader.read_uint32();
+
+				for(uint32_t i = 0; i < fields; ++ i)
+				{
+					telemetry_provider_field field;
+
+					field.enabled = false;
+					field.id = reader.read_uint8();
+					field.provider_id = runtime_id;
+					field.type = (telemetry_type)reader.read_uint8();
+					field.unit = (telemetry_unit)reader.read_uint8();
+					field.title = reader.read_string();
+					field.color = generate_color(field.title, 0.9f, 0.4f);
+
+					provider.fields.push_back(field);
+				}
+
 				break;
 			}
 
