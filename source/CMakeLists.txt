@@ -7,17 +7,8 @@ set(QtComponents
 		Core
 		Widgets
 		Gui
-		Charts
 		WebEngineWidgets
-		WebEngineCore
-		WebChannel
-		PrintSupport
-		QuickWidgets
-		Network
-		Positioning
-		Quick
-		Qml
-		QmlModels)
+)
 
 find_package(Qt5 COMPONENTS ${QtComponents} REQUIRED)
 

@@ -4,6 +4,7 @@
 
 #include <vector>
 #include <QFile>
+#include <QPointF>
 #include "../utilities/data_decimator.h"
 #include "../utilities/color.h"
 #include "telemetry_reader.h"
