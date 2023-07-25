@@ -78,3 +78,6 @@ if(WIN32)
 	# Copy the platform data
 	add_custom_command(TARGET tlm-viewer POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_directory "$<TARGET_FILE_DIR:Qt5::Core>/../plugins/platforms" "$<TARGET_FILE_DIR:tlm-viewer>/platforms")
 endif()
+if (IS_LINUX)
+	target_link_libraries(tlm-viewer PRIVATE stdc++ m)
+endif()

@@ -3,6 +3,7 @@
 //
 
 #include "data_decimator.h"
+#include <cmath>
 
 QVector<std::pair<double, QVariant>> decimate_data(const QVector<std::pair<double, QVariant>> &input, uint32_t threshold)
 {
