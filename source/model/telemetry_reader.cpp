@@ -358,6 +358,32 @@ telemetry_container read_telemetry_data(const uint8_t *data, size_t size)
 				container.statistics.push_back(stat);
 				break;
 			}
+
+			case telemetry_command::event:
+			{
+				telemetry_event event{};
+
+				event.id = reader.read_uint64();
+				event.time = reader.read_double();
+				event.event_type = (telemetry_event_type) reader.read_uint8();
+
+				const size_t length = reader.read_uint32();
+				const size_t read = reader.get_read();
+
+				while ((reader.get_read() - read) < length)
+				{
+					telemetry_type type = (telemetry_type) reader.read_uint8();
+
+					QString title = reader.read_string();
+					QVariant value = read_variant(reader, type);
+
+					event.fields.push_back(std::make_pair(title, value));
+				}
+
+				container.events.push_back(event);
+
+				break;
+			}
 		}
 	}
 
@@ -370,6 +396,53 @@ telemetry_container read_telemetry_data(const uint8_t *data, size_t size)
 		}
 	}
 #endif
+
+	std::map<uint64_t, telemetry_event_span> spans;
+
+	for (auto& event : container.events)
+	{
+		auto it = spans.find(event.id);
+		if (it != spans.end())
+		{
+			if (event.event_type == telemetry_event_type::begin)
+				it->second.begin = event.time;
+			if (event.event_type == telemetry_event_type::end)
+				it->second.end = event.time;
+			std::copy(event.fields.begin(), event.fields.end(), std::back_inserter(it->second.fields));
+		}
+		else
+		{
+			telemetry_event_span span {};
+			span.id = event.id;
+			if (event.event_type == telemetry_event_type::begin)
+				span.begin = event.time;
+			if (event.event_type == telemetry_event_type::end)
+				span.end = event.time;
+			span.fields = event.fields;
+			spans.insert({event.id, span});
+		}
+	}
+
+	for (auto it = spans.rbegin(); it != spans.rend(); it++)
+	{
+		for (auto& f : it->second.fields)
+		{
+			if (f.first == "parent")
+				spans.find(f.second.toULongLong())->second.child_spans.push_back(it->second);
+		}
+	}
+
+	for (auto& it : spans)
+	{
+		auto has_parent = std::any_of(it.second.fields.begin(), it.second.fields.end(), [](auto& f){
+			return f.first == "parent";
+		});
+
+		if (has_parent)
+			continue;
+
+		container.event_spans.push_back(it.second);
+	}
 
 	double start_time = 0.0;
 	double end_time = 0.0;

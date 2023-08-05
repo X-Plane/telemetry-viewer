@@ -24,6 +24,21 @@ const char *telemetry_unit_to_string(telemetry_unit unit)
 	return "";
 }
 
+const char *telemetry_event_type_to_string(telemetry_event_type event_type)
+{
+	switch(event_type)
+	{
+	case telemetry_event_type::begin:
+		return "Begin";
+	case telemetry_event_type::end:
+		return "End";
+	case telemetry_event_type::meta:
+		return "Meta";
+	}
+
+	return "";
+}
+
 telemetry_provider_field &telemetry_provider::find_field(uint8_t id)
 {
 	for(auto &field : fields)

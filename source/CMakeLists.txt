@@ -22,7 +22,9 @@ set(SOURCES
 		utilities/color.h
 		widgets/document_window.cpp
 		widgets/chart_widget.cpp
-		widgets/time_picker_widget.cpp)
+		widgets/time_picker_widget.cpp
+		widgets/timeline_widget.cpp
+		widgets/timeline_widget.h)
 
 add_header_files(SOURCES)
 
@@ -35,6 +37,7 @@ set(DEFINITIONS
 qt5_wrap_cpp(SOURCES
 		model/generic_tree_model.h
 		widgets/document_window.h
+		widgets/timeline_widget.h
 		widgets/time_picker_widget.h)
 qt5_wrap_ui(SOURCES
 		../resources/ui/document_window.ui)

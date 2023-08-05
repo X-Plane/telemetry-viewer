@@ -31,6 +31,16 @@ document_window::document_window()
 
 	m_splitter->setStretchFactor(0, 3);
 	m_splitter->setStretchFactor(1, 1);
+
+	connect(m_timeline_widget, &timeline_widget::spanFocused, [this](uint64_t id){
+		auto model = m_timeline_tree->model();
+		auto x = model->match(model->index(0,0, {}), Qt::DisplayRole, (quint64) id, 1, Qt::MatchFlag::MatchExactly|Qt::MatchFlag::MatchRecursive);
+		if (!x.empty())
+		{
+			m_timeline_tree->scrollTo(x.front(),QAbstractItemView::ScrollHint::PositionAtTop);
+			m_timeline_tree->selectionModel()->select(x.front(), QItemSelectionModel::SelectionFlag::ClearAndSelect|QItemSelectionModel::Rows);
+		}
+	});
 }
 
 document_window::~document_window()
@@ -152,6 +162,37 @@ void document_window::update_telemetry()
 			m_providers_view->expand(model->index(index, 0, QModelIndex()));
 
 		delete old_model;
+	}
+	{
+		generic_tree_item *root_item = new generic_tree_item({"Event", "Duration", "Path"});
+		auto add_span = [](generic_tree_item* root, const telemetry_event_span& ev) {
+			auto add_span_impl = [](generic_tree_item* root, const telemetry_event_span& ev, auto& r) -> void
+			{
+				QString path;
+				for (auto& f : ev.fields)
+				{
+					if (f.first == "path")
+						path = f.second.toString();
+				}
+
+				generic_tree_item *child = root->add_child({ (quint64)ev.id, (ev.end - ev.begin) * 1000.0f, path });
+
+				for (auto& child_ev: ev.child_spans)
+					r(child, child_ev, r);
+			};
+
+			add_span_impl(root, ev, add_span_impl);
+		};
+		for (auto& ev : m_telemetry.event_spans)
+			add_span(root_item, ev);
+
+		generic_tree_model *old_model = (generic_tree_model*)m_timeline_tree->model();
+		generic_tree_model *model = new generic_tree_model(root_item);
+		m_timeline_tree->setModel(model);
+		m_timeline_tree->update();
+		delete old_model;
+
+		m_timeline_widget->setTimelineSpans(m_telemetry.event_spans);
 	}
 
 	m_enabled_fields.clear();

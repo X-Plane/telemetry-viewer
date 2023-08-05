@@ -39,13 +39,37 @@ enum class telemetry_unit : uint8_t
 	memory = 3,
 	duration = 4
 };
+enum class telemetry_event_type : uint8_t
+{
+	begin = 'b',
+	end = 'e',
+	meta = 'm',
+};
 
 const char *telemetry_unit_to_string(telemetry_unit unit);
+const char *telemetry_event_type_to_string(telemetry_event_type event_type);
 
 struct telemetry_statistic
 {
 	QString title;
 	QVector<std::pair<QString, QVariant>> entries;
+};
+
+struct telemetry_event
+{
+	uint64_t id;
+	double time;
+	telemetry_event_type event_type;
+	QVector<std::pair<QString, QVariant>> fields;
+};
+
+struct telemetry_event_span
+{
+	uint64_t id;
+	double begin;
+	double end;
+	QVector<std::pair<QString, QVariant>> fields;
+	QVector<telemetry_event_span> child_spans;
 };
 
 struct telemetry_provider_field
@@ -75,6 +99,8 @@ struct telemetry_container
 {
 	QVector<telemetry_statistic> statistics;
 	QVector<telemetry_provider> providers;
+	QVector<telemetry_event> events;
+	QVector<telemetry_event_span> event_spans;
 
 	int32_t start_time;
 	int32_t end_time;
