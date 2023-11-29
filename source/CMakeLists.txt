@@ -7,6 +7,14 @@ set(QtComponents
 		Core
 		Widgets
 		Gui
+		Qml
+		Quick
+		QuickWidgets
+		PrintSupport
+		Network
+		Positioning
+		WebChannel
+		WebEngineCore
 		WebEngineWidgets
 )
 
