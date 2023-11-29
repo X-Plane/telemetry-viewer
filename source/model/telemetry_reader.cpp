@@ -199,7 +199,7 @@ QVariant read_variant(file_reader &reader, telemetry_type type)
 		}
 		case telemetry_type::uint64:
 		{
-			return QVariant((quint64)reader.read_uint64());
+			return QVariant(reader.read_uint64());
 		}
 
 
@@ -209,7 +209,7 @@ QVariant read_variant(file_reader &reader, telemetry_type type)
 		}
 		case telemetry_type::int64:
 		{
-			return QVariant((qint64)reader.read_int64());
+			return QVariant(reader.read_int64());
 		}
 
 		case telemetry_type::floatv:
@@ -245,6 +245,7 @@ telemetry_container read_telemetry_data(const uint8_t *data, size_t size)
 	telemetry_container container;
 
 	file_reader reader(data, 8);
+	double highest_timestamp = 0.0;
 
 	while(!reader.at_end(size))
 	{
@@ -320,6 +321,8 @@ telemetry_container read_telemetry_data(const uint8_t *data, size_t size)
 				{
 					double timestamp = reader.read_double();
 
+					highest_timestamp = std::max(highest_timestamp, timestamp);
+
 					const size_t length = reader.read_uint32();
 					const size_t read = reader.get_read();
 
@@ -327,6 +330,12 @@ telemetry_container read_telemetry_data(const uint8_t *data, size_t size)
 					{
 						telemetry_provider_field &field = provider.find_field(reader.read_uint8());
 						QVariant data = read_variant(reader, field.type);
+
+						if(field.type == telemetry_type::boolean && !field.data_points.empty())
+						{
+							const bool inverse = !data.toBool();
+							field.data_points.push_back(std::make_pair(timestamp, QVariant(inverse)));
+						}
 
 						field.data_points.push_back(std::make_pair(timestamp, data));
 					}
@@ -387,15 +396,27 @@ telemetry_container read_telemetry_data(const uint8_t *data, size_t size)
 		}
 	}
 
-#if 1
 	for(auto &provider : container.providers)
 	{
 		for(auto &field : provider.fields)
 		{
 			field.data_points = decimate_data(field.data_points, 1000);
+
+			if(!field.data_points.empty())
+			{
+				// Repeat the last data point for the final timestamp to pad out the data to the very end,
+				// but only if its timestamp is more than 2 seconds after the highest timestamp
+				const auto &last = field.data_points.back();
+
+				if((highest_timestamp - last.first) > 2.0f)
+					field.data_points.push_back(std::make_pair(highest_timestamp, last.second));
+			}
 		}
 	}
-#endif
+
+	std::sort(container.providers.begin(), container.providers.end(), [](const telemetry_provider &lhs, const telemetry_provider &rhs) {
+		return lhs.title < rhs.title;
+	});
 
 	std::map<uint64_t, telemetry_event_span> spans;
 

@@ -68,11 +68,11 @@ QModelIndex generic_tree_model::index(int row, int column, const QModelIndex &pa
 	if(!parent_item)
 		return QModelIndex();
 
-	generic_tree_item *child = parent_item->get_child(row);
-	if(child)
-		return createIndex(row, column, child);
+	if(parent_item->get_child_count() <= row)
+		return QModelIndex();
 
-	return QModelIndex();
+	generic_tree_item *child = parent_item->get_child(row);
+	return createIndex(row, column, child);
 }
 
 QModelIndex generic_tree_model::parent(const QModelIndex &index) const
