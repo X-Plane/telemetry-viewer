@@ -23,17 +23,20 @@ QSize time_picker_widget::sizeHint() const
 	return lineEdit()->sizeHint();
 }
 
-void time_picker_widget::format_value()
+QString time_picker_widget::format_time(int32_t time)
 {
-	int32_t hour = m_value / 60 / 60;
-	int32_t minute = (m_value / 60) % 60;
-	int32_t seconds = m_value % 60;
+	int32_t hour = time / 60 / 60;
+	int32_t minute = (time / 60) % 60;
+	int32_t seconds = time % 60;
 
 	QString value = hour > 0 ? (QString::asprintf("%02i", hour) % ":") : QString();
 
-	value = value % QString::asprintf("%02i", minute) % ":" % QString::asprintf("%02i", seconds);
+	return value % QString::asprintf("%02i", minute) % ":" % QString::asprintf("%02i", seconds);
+}
 
-	lineEdit()->setText(value);
+void time_picker_widget::format_value() const
+{
+	lineEdit()->setText(format_time(m_value));
 }
 
 QAbstractSpinBox::StepEnabled time_picker_widget::stepEnabled() const

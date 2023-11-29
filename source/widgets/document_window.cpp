@@ -28,6 +28,7 @@ document_window::document_window()
 
 	connect(m_start_edit, &time_picker_widget::value_changed, this, &document_window::range_changed);
 	connect(m_end_edit, &time_picker_widget::value_changed, this, &document_window::range_changed);
+	connect(m_event_picker, qOverload<int>(&QComboBox::currentIndexChanged), this, &document_window::event_range_changed);
 
 	m_splitter->setStretchFactor(0, 3);
 	m_splitter->setStretchFactor(1, 1);
@@ -44,8 +45,7 @@ document_window::document_window()
 }
 
 document_window::~document_window()
-{
-}
+{}
 
 void document_window::open_file()
 {
@@ -66,6 +66,15 @@ void document_window::range_changed(int32_t value)
 {
 	m_chart_view->set_range(m_start_edit->get_value(), m_end_edit->get_value());
 }
+
+void document_window::event_range_changed(int index)
+{
+	m_chart_view->set_range(m_event_ranges[index].start, m_event_ranges[index].end);
+
+	m_start_edit->set_value(m_event_ranges[index].start);
+	m_end_edit->set_value(m_event_ranges[index].end);
+}
+
 
 bool document_window::tree_model_data_did_change(generic_tree_model *model, generic_tree_item *item, int index, const QVariant &data)
 {
@@ -126,6 +135,19 @@ void document_window::update_telemetry()
 
 		delete old_model;
 	}
+
+	m_event_ranges.clear();
+
+	{
+		event_range everything;
+
+		everything.start = m_telemetry.start_time;
+		everything.end = m_telemetry.end_time;
+		everything.name = "Everything";
+
+		m_event_ranges.push_back(everything);
+	}
+
 	{
 		generic_tree_item *root_item = new generic_tree_item({"Provider", "Title"});
 
@@ -146,6 +168,64 @@ void document_window::update_telemetry()
 
 				if(provider.identifier == "com.laminarresearch.test_main_class")
 					expanded.push_front(index);
+
+				if(provider.identifier == "com.laminarresarch.sim_apup")
+				{
+					auto &do_world_events = provider.find_field(0);
+					auto &aircraft_events = provider.find_field(2);
+
+					bool is_doing_world = false;
+					double start_timestamp = 0.0;
+					double end_timestamp = 0.0;
+
+					auto flush_range = [this, &aircraft_events](double start, double end) {
+
+						// We want at least 10 seconds worth of data to add it to the timeline
+						if((end - start) > 10.0)
+						{
+							QString title;
+
+							try
+							{
+								title = aircraft_events.get_data_point_after_time(start + 5.0).second.toString();
+							}
+							catch(...)
+							{
+								title = "Event";
+							}
+
+
+							event_range range;
+							range.start = start + 4.0;
+							range.end = end - 4.0;
+							range.name = title + QString(" (") + time_picker_widget::format_time(range.start) + " - " + time_picker_widget::format_time(range.end) + QString(")");
+
+							m_event_ranges.push_back(range);
+						}
+
+					};
+
+					for(auto &data : do_world_events.data_points)
+					{
+						if(data.second.toBool() && !is_doing_world)
+						{
+							is_doing_world = true;
+							start_timestamp = data.first;
+						}
+
+						if(data.second.toBool())
+							end_timestamp = data.first;
+
+						if(!data.second.toBool() && is_doing_world)
+						{
+							is_doing_world = false;
+							flush_range(start_timestamp, end_timestamp);
+						}
+					}
+
+					if(is_doing_world)
+						flush_range(start_timestamp, end_timestamp);
+				}
 
 				index++;
 			}
@@ -194,6 +274,11 @@ void document_window::update_telemetry()
 
 		m_timeline_widget->setTimelineSpans(m_telemetry.event_spans);
 	}
+
+	m_event_picker->clear();
+
+	for(auto &event : m_event_ranges)
+		m_event_picker->addItem(event.name);
 
 	m_enabled_fields.clear();
 

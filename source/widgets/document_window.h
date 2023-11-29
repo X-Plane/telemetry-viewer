@@ -25,12 +25,20 @@ public:
 private slots:
 	void open_file();
 	void range_changed(int32_t value);
+	void event_range_changed(int index);
 
 private:
+	struct event_range
+	{
+		int32_t start, end;
+		QString name;
+	};
+
 	void update_telemetry();
 
 	telemetry_container m_telemetry;
 	std::vector<telemetry_provider_field *> m_enabled_fields;
+	std::vector<event_range> m_event_ranges;
 };
 
 #endif //SPIRV_STUDIO_DOCUMENT_WINDOW_H

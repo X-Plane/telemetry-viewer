@@ -74,6 +74,9 @@ struct telemetry_event_span
 
 struct telemetry_provider_field
 {
+	QVector<std::pair<double, QVariant>> get_data_points_in_range(int32_t start, int32_t end) const;
+	std::pair<double, QVariant> get_data_point_after_time(int32_t time) const;
+
 	bool enabled;
 	uint8_t id;
 	uint16_t provider_id;

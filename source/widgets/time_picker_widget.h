@@ -25,11 +25,13 @@ public:
 
 	int32_t get_value() const { return m_value; }
 
-signals:
+	static QString format_time(int32_t time);
+
+Q_SIGNALS:
 	void value_changed(int32_t value);
 
 private:
-	void format_value();
+	void format_value() const;
 
 	int32_t m_start;
 	int32_t m_end;

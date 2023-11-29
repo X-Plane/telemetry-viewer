@@ -61,3 +61,33 @@ telemetry_provider &telemetry_container::find_provider(uint16_t runtime_id)
 	throw std::invalid_argument("Unknown provider ID");
 }
 
+
+QVector<std::pair<double, QVariant>> telemetry_provider_field::get_data_points_in_range(int32_t start, int32_t end) const
+{
+	QVector<std::pair<double, QVariant>> result;
+
+	for(auto &data : data_points)
+	{
+		if(data.first >= start && data.first <= end)
+			result.push_back(data);
+	}
+
+	return result;
+}
+std::pair<double, QVariant> telemetry_provider_field::get_data_point_after_time(int32_t time) const
+{
+	for(int i = 0; i < data_points.size(); ++ i)
+	{
+		auto &data = data_points[i];
+
+		if(data.first < time)
+			continue;
+
+		if(i > 0)
+			return data_points[i - 1];
+
+		return data;
+	}
+
+	throw std::invalid_argument("No data point after time");
+}
