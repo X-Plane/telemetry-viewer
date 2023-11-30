@@ -32,9 +32,12 @@ document_window::document_window()
 	connect(m_start_edit, &time_picker_widget::value_changed, this, &document_window::range_changed);
 	connect(m_end_edit, &time_picker_widget::value_changed, this, &document_window::range_changed);
 	connect(m_event_picker, qOverload<int>(&QComboBox::currentIndexChanged), this, &document_window::event_range_changed);
+	connect(m_page_selector, qOverload<int>(&QComboBox::currentIndexChanged), this, &document_window::selected_widget_changed);
 
 	m_splitter->setStretchFactor(0, 3);
 	m_splitter->setStretchFactor(1, 1);
+
+	m_widget_stack->setCurrentIndex(0);
 
 	connect(m_timeline_widget, &timeline_widget::spanFocused, [this](uint64_t id){
 		auto model = m_timeline_tree->model();
@@ -135,6 +138,11 @@ void document_window::event_range_changed(int index)
 
 	m_start_edit->set_value(m_event_ranges[index].start);
 	m_end_edit->set_value(m_event_ranges[index].end);
+}
+
+void document_window::selected_widget_changed(int index)
+{
+	m_widget_stack->setCurrentIndex(index);
 }
 
 
