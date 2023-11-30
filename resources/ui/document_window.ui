@@ -131,11 +131,6 @@
             <string>Samples</string>
            </attribute>
           </widget>
-          <widget class="QWidget" name="page_2">
-           <attribute name="title">
-            <string>Statistics</string>
-           </attribute>
-          </widget>
           <widget class="QWidget" name="m_timeline_page">
            <attribute name="title">
             <string>Events</string>
@@ -162,6 +157,16 @@
               </widget>
               <widget class="QTreeView" name="m_timeline_tree"/>
              </widget>
+            </item>
+           </layout>
+          </widget>
+          <widget class="QWidget" name="page_2">
+           <attribute name="title">
+            <string>Statistics</string>
+           </attribute>
+           <layout class="QVBoxLayout" name="verticalLayout">
+            <item>
+             <widget class="QTextBrowser" name="m_statistics_result"/>
             </item>
            </layout>
           </widget>

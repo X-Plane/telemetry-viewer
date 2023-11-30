@@ -6,9 +6,9 @@
 #define TELEMETRY_STUDIO_DATA_DECIMATOR_H
 
 #include <QVector>
-#include <QVariant>
-#include <cstdint>
 
-QVector<std::pair<double, QVariant>> decimate_data(const QVector<std::pair<double, QVariant>> &input, uint32_t threshold);
+struct telemetry_data_point;
+
+QVector<telemetry_data_point> decimate_data(const QVector<telemetry_data_point> &input, uint32_t threshold);
 
 #endif //TELEMETRY_STUDIO_DATA_DECIMATOR_H

@@ -117,9 +117,9 @@ QString chart_widget::build_html(telemetry_provider_field *field) const
 
 	for(auto &data : field->data_points)
 	{
-		if(data.first < m_start)
+		if(data.timestamp < m_start)
 			continue;
-		if(data.first > m_end) // Data is in order!
+		if(data.timestamp > m_end) // Data is in order!
 			break;
 
 		QString field_data;
@@ -128,20 +128,20 @@ QString chart_widget::build_html(telemetry_provider_field *field) const
 		{
 			case telemetry_unit::duration:
 			{
-				QPointF point = data.second.toPointF();
+				QPointF point = data.value.toPointF();
 				field_data = QString::number(point.y() - point.x());
 
 				break;
 			}
 
 			default:
-				field_data = QString::number(data.second.toFloat());
+				field_data = QString::number(data.value.toFloat());
 
-				qInfo() << data.second.toFloat();
+				qInfo() << data.value.toFloat();
 				break;
 		}
 
-		result = result % "{x:" % QString::number(data.first) % ",y:" % field_data % "},\n";
+		result = result % "{x:" % QString::number(data.timestamp) % ",y:" % field_data % "},\n";
 	}
 
 	result = result % "]\n";

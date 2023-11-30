@@ -72,10 +72,16 @@ struct telemetry_event_span
 	QVector<telemetry_event_span> child_spans;
 };
 
+struct telemetry_data_point
+{
+	double timestamp;
+	QVariant value;
+};
+
 struct telemetry_provider_field
 {
-	QVector<std::pair<double, QVariant>> get_data_points_in_range(int32_t start, int32_t end) const;
-	std::pair<double, QVariant> get_data_point_after_time(int32_t time) const;
+	QVector<telemetry_data_point> get_data_points_in_range(int32_t start, int32_t end) const;
+	telemetry_data_point get_data_point_after_time(int32_t time) const;
 
 	bool enabled;
 	uint8_t id;
@@ -84,7 +90,7 @@ struct telemetry_provider_field
 	telemetry_unit unit;
 	QString title;
 	QString color;
-	QVector<std::pair<double, QVariant>> data_points;
+	QVector<telemetry_data_point> data_points;
 };
 
 struct telemetry_provider
@@ -111,6 +117,7 @@ struct telemetry_container
 	QByteArray raw_data;
 
 	telemetry_provider &find_provider(uint16_t runtime_id);
+	telemetry_provider &find_provider(const QString &identifier);
 };
 
 #endif //TELEMETRY_STUDIO_TELEMETRY_CONTAINER_H

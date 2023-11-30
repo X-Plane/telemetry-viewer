@@ -5,13 +5,16 @@
 #include <QApplication>
 #include <QFileDialog>
 #include <QProcess>
-#include "document_window.h"
-
+#include <QString>
+#include <QTextStream>
 #include <thread>
+
+#include "document_window.h"
 
 #include "test_runner_dialog.h"
 #include "model/telemetry_reader.h"
 #include "utilities/xplane_installations.h"
+#include "utilities/run_statistics.h"
 
 document_window::document_window() :
 	m_test_runner_dialog(nullptr)
@@ -65,12 +68,64 @@ document_window::~document_window()
 }
 
 
+void document_window::set_time_range(int32_t start, int32_t end)
+{
+	m_chart_view->set_range(start, end);
+
+	try
+	{
+		QString markdown;
+		QTextStream stream(&markdown);
+
+		auto &provider = m_telemetry.find_provider("com.laminarresearch.test_main_class");
+
+		auto cpu_times = provider.find_field(0).get_data_points_in_range(start, end);
+		auto gpu_times = provider.find_field(1).get_data_points_in_range(start, end);
+
+		auto build_timing_table = [&stream](const QVector<telemetry_data_point> &data) {
+
+			uint32_t p99th = calculate_percentile_for_time(0.99, data) * 1000.0;
+			uint32_t p95th = calculate_percentile_for_time(0.95, data) * 1000.0;
+			uint32_t p90th = calculate_percentile_for_time(0.90, data) * 1000.0;
+
+			uint32_t p5th = calculate_percentile_for_time(0.05, data) * 1000.0;
+			uint32_t p1th = calculate_percentile_for_time(0.01, data) * 1000.0;
+
+			stream << "| Percentile | Timing |\n";
+			stream << "| ---- | ------ |\n";
+			stream << "| 99th | " << p99th << "ms |\n";
+			stream << "| 95th | " << p95th << "ms |\n";
+			stream << "| 90th | " << p90th << "ms |\n";
+			stream << "| 5th | " << p5th << "ms |\n";
+			stream << "| 1st | " << p1th << "ms |\n";
+
+			stream << "\n\n";
+		};
+
+		stream << "# CPU timing data\n";
+		stream << "The average frame took **" << uint32_t(calculate_average(cpu_times) * 1000.0) << "ms** to compute on the CPU.\n\n";
+
+		build_timing_table(cpu_times);
+
+		stream << "# GPU timing data\n";
+		stream << "The average frame took **" << uint32_t(calculate_average(gpu_times) * 1000.0) << "ms** to compute on the GPU.\n\n";
+
+		build_timing_table(gpu_times);
+
+		m_statistics_result->setMarkdown(markdown);
+	}
+	catch(...)
+	{
+		m_statistics_result->setMarkdown(QString("Failed to get statistics from trace"));
+	}
+}
+
 void document_window::load_file(const QString &path)
 {
 	m_telemetry = read_telemetry_data(path);
 
 	m_chart_view->clear();
-	m_chart_view->set_range(m_telemetry.start_time, m_telemetry.end_time);
+	set_time_range(m_telemetry.start_time, m_telemetry.end_time);
 
 	update_telemetry();
 	setWindowFilePath(path);
@@ -162,7 +217,7 @@ void document_window::run_fps_test()
 
 void document_window::range_changed(int32_t value)
 {
-	m_chart_view->set_range(m_start_edit->get_value(), m_end_edit->get_value());
+	set_time_range(m_start_edit->get_value(), m_end_edit->get_value());
 }
 
 void document_window::event_range_changed(int index)
@@ -170,7 +225,7 @@ void document_window::event_range_changed(int index)
 	if(index == -1)
 		return;
 
-	m_chart_view->set_range(m_event_ranges[index].start, m_event_ranges[index].end);
+	set_time_range(m_event_ranges[index].start, m_event_ranges[index].end);
 
 	m_start_edit->set_value(m_event_ranges[index].start);
 	m_end_edit->set_value(m_event_ranges[index].end);
@@ -295,7 +350,7 @@ void document_window::update_telemetry()
 
 							try
 							{
-								title = aircraft_events.get_data_point_after_time(start + 5.0).second.toString();
+								title = aircraft_events.get_data_point_after_time(start + 5.0).value.toString();
 							}
 							catch(...)
 							{
@@ -314,16 +369,16 @@ void document_window::update_telemetry()
 
 					for(auto &data : do_world_events.data_points)
 					{
-						if(data.second.toBool() && !is_doing_world)
+						if(data.value.toBool() && !is_doing_world)
 						{
 							is_doing_world = true;
-							start_timestamp = data.first;
+							start_timestamp = data.timestamp;
 						}
 
-						if(data.second.toBool())
-							end_timestamp = data.first;
+						if(data.value.toBool())
+							end_timestamp = data.timestamp;
 
-						if(!data.second.toBool() && is_doing_world)
+						if(!data.value.toBool() && is_doing_world)
 						{
 							is_doing_world = false;
 							flush_range(start_timestamp, end_timestamp);

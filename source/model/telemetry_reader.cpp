@@ -341,10 +341,19 @@ telemetry_container read_telemetry_data(void *data, size_t size)
 						if(field.type == telemetry_type::boolean && !field.data_points.empty())
 						{
 							const bool inverse = !data.toBool();
-							field.data_points.push_back(std::make_pair(timestamp, QVariant(inverse)));
+
+							telemetry_data_point data_point;
+							data_point.timestamp = timestamp;
+							data_point.value = QVariant(inverse);
+
+							field.data_points.push_back(data_point);
 						}
 
-						field.data_points.push_back(std::make_pair(timestamp, data));
+						telemetry_data_point data_point;
+						data_point.timestamp = timestamp;
+						data_point.value = data;
+
+						field.data_points.push_back(data_point);
 					}
 				}
 
@@ -415,8 +424,14 @@ telemetry_container read_telemetry_data(void *data, size_t size)
 				// but only if its timestamp is more than 2 seconds after the highest timestamp
 				const auto &last = field.data_points.back();
 
-				if((highest_timestamp - last.first) > 2.0f)
-					field.data_points.push_back(std::make_pair(highest_timestamp, last.second));
+				if((highest_timestamp - last.timestamp) > 2.0f)
+				{
+					telemetry_data_point data_point;
+					data_point.timestamp = highest_timestamp;
+					data_point.value = last.value;
+
+					field.data_points.push_back(data_point);
+				}
 			}
 		}
 	}
@@ -482,8 +497,8 @@ telemetry_container read_telemetry_data(void *data, size_t size)
 			if(field.data_points.empty())
 				continue;
 
-			start_time = std::min(start_time, field.data_points.first().first);
-			end_time = std::max(end_time, field.data_points.last().first);
+			start_time = std::min(start_time, field.data_points.first().timestamp);
+			end_time = std::max(end_time, field.data_points.last().timestamp);
 		}
 	}
 

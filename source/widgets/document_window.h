@@ -40,6 +40,8 @@ private:
 		QString name;
 	};
 
+	void set_time_range(int32_t start, int32_t end);
+
 	void update_telemetry();
 	void load_file(const QString &path);
 

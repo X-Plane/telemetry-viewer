@@ -70,5 +70,8 @@ QStringList test_runner_dialog::get_arguments(const QString &telemetry_path) con
 	if(!telemetry_path.isEmpty())
 		result.push_back("--telemetry_path=" + xplaneify_path(telemetry_path) + "");
 
+	if(!m_additional_commands->text().isEmpty())
+		result.push_back(m_additional_commands->text());
+
 	return result;
 }
