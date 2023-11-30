@@ -118,36 +118,28 @@
            <item>
             <widget class="QComboBox" name="m_installation_selector"/>
            </item>
-           <item>
-            <widget class="QComboBox" name="m_page_selector">
-             <item>
-              <property name="text">
-               <string>Samples</string>
-              </property>
-             </item>
-             <item>
-              <property name="text">
-               <string>Statistics</string>
-              </property>
-             </item>
-             <item>
-              <property name="text">
-               <string>Timeline</string>
-              </property>
-             </item>
-            </widget>
-           </item>
           </layout>
          </widget>
         </item>
         <item>
-         <widget class="QStackedWidget" name="m_widget_stack">
+         <widget class="QTabWidget" name="tabWidget">
           <property name="currentIndex">
            <number>0</number>
           </property>
-          <widget class="chart_widget" name="m_chart_view"/>
-          <widget class="QWidget" name="page_2"/>
+          <widget class="chart_widget" name="m_chart_view">
+           <attribute name="title">
+            <string>Samples</string>
+           </attribute>
+          </widget>
+          <widget class="QWidget" name="page_2">
+           <attribute name="title">
+            <string>Statistics</string>
+           </attribute>
+          </widget>
           <widget class="QWidget" name="m_timeline_page">
+           <attribute name="title">
+            <string>Events</string>
+           </attribute>
            <layout class="QVBoxLayout" name="verticalLayout">
             <item>
              <widget class="QSplitter" name="splitter_2">
@@ -205,15 +197,21 @@
            <item>
             <widget class="QLabel" name="label">
              <property name="text">
-              <string>Event:</string>
+              <string>Range:</string>
              </property>
             </widget>
            </item>
            <item>
             <widget class="QComboBox" name="m_event_picker">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
              <property name="minimumSize">
               <size>
-               <width>150</width>
+               <width>240</width>
                <height>0</height>
               </size>
              </property>

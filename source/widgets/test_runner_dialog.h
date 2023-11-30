@@ -16,6 +16,8 @@ Q_OBJECT
 public:
 	test_runner_dialog(xplane_installation *installation);
 
+	xplane_installation *get_installation() const { return m_installation; }
+
 	QString get_executable() const;
 	QStringList get_arguments(const QString &telemetry_path = "") const;
 

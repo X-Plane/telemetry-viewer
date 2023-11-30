@@ -13,12 +13,15 @@
 #include "model/telemetry_container.h"
 #include "model/generic_tree_model.h"
 
+class test_runner_dialog;
+
 class document_window final : public QMainWindow, public Ui::document_window, public generic_tree_model_delegate
 {
 Q_OBJECT
 
 public:
 	document_window();
+	~document_window();
 
 	bool tree_model_data_did_change(generic_tree_model *model, generic_tree_item *item, int index, const QVariant &data) override;
 
@@ -29,7 +32,6 @@ private slots:
 
 	void range_changed(int32_t value);
 	void event_range_changed(int index);
-	void selected_widget_changed(int index);
 
 private:
 	struct event_range
@@ -42,10 +44,10 @@ private:
 	void load_file(const QString &path);
 
 	telemetry_container m_telemetry;
-	std::vector<telemetry_provider_field *> m_enabled_fields;
 	std::vector<event_range> m_event_ranges;
 
 	QVector<xplane_installation> m_installations;
+	test_runner_dialog *m_test_runner_dialog;
 };
 
 #endif //SPIRV_STUDIO_DOCUMENT_WINDOW_H

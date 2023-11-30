@@ -13,7 +13,8 @@
 #include "model/telemetry_reader.h"
 #include "utilities/xplane_installations.h"
 
-document_window::document_window()
+document_window::document_window() :
+	m_test_runner_dialog(nullptr)
 {
 	setupUi(this);
 	setWindowTitle(QString("Telemetry Viewer"));
@@ -37,12 +38,9 @@ document_window::document_window()
 	connect(m_start_edit, &time_picker_widget::value_changed, this, &document_window::range_changed);
 	connect(m_end_edit, &time_picker_widget::value_changed, this, &document_window::range_changed);
 	connect(m_event_picker, qOverload<int>(&QComboBox::currentIndexChanged), this, &document_window::event_range_changed);
-	connect(m_page_selector, qOverload<int>(&QComboBox::currentIndexChanged), this, &document_window::selected_widget_changed);
 
 	m_splitter->setStretchFactor(0, 3);
 	m_splitter->setStretchFactor(1, 1);
-
-	m_widget_stack->setCurrentIndex(0);
 
 	connect(m_timeline_widget, &timeline_widget::spanFocused, [this](uint64_t id){
 		auto model = m_timeline_tree->model();
@@ -61,6 +59,11 @@ document_window::document_window()
 	for(auto &install : m_installations)
 		m_installation_selector->addItem(install.path);
 }
+document_window::~document_window()
+{
+	delete m_test_runner_dialog;
+}
+
 
 void document_window::load_file(const QString &path)
 {
@@ -102,8 +105,16 @@ void document_window::save_file()
 
 void document_window::run_fps_test()
 {
-	test_runner_dialog dialog(&m_installations[m_installation_selector->currentIndex()]);
-	const int result = dialog.exec();
+	xplane_installation *installation = &m_installations[m_installation_selector->currentIndex()];
+
+	if(!m_test_runner_dialog || m_test_runner_dialog->get_installation() != installation)
+	{
+		delete m_test_runner_dialog;
+
+		m_test_runner_dialog = new test_runner_dialog(installation);
+	}
+
+	const int result = m_test_runner_dialog->exec();
 
 	if(result)
 	{
@@ -119,7 +130,7 @@ void document_window::run_fps_test()
 		}
 
 		QProcess process;
-		process.start(dialog.get_executable(), dialog.get_arguments(result_path));
+		process.start(m_test_runner_dialog->get_executable(), m_test_runner_dialog->get_arguments(result_path));
 
 		while(!process.waitForFinished())
 			std::this_thread::sleep_for(std::chrono::seconds(1));
@@ -131,6 +142,13 @@ void document_window::run_fps_test()
 			if(info.isFile())
 			{
 				load_file(full_result_path);
+
+				if(m_event_ranges.size() > 1)
+				{
+					m_event_picker->setCurrentIndex(1);
+					range_changed(1);
+				}
+
 				statusBar()->showMessage("Ready!");
 
 				return;
@@ -158,32 +176,26 @@ void document_window::event_range_changed(int index)
 	m_end_edit->set_value(m_event_ranges[index].end);
 }
 
-void document_window::selected_widget_changed(int index)
-{
-	m_widget_stack->setCurrentIndex(index);
-}
-
 
 bool document_window::tree_model_data_did_change(generic_tree_model *model, generic_tree_item *item, int index, const QVariant &data)
 {
 	if(item->is_boolean(index))
 	{
 		telemetry_provider_field *field = (telemetry_provider_field *)item->get_context();
-		auto iterator = std::find(m_enabled_fields.begin(), m_enabled_fields.end(), field);
 
 		if(data.toBool())
 		{
-			if(iterator == m_enabled_fields.end())
+			if(!field->enabled)
 			{
-				m_enabled_fields.push_back(field);
+				field->enabled = true;
 				m_chart_view->add_data(field);
 			}
 		}
 		else
 		{
-			if(iterator != m_enabled_fields.end())
+			if(field->enabled)
 			{
-				m_enabled_fields.erase(iterator);
+				field->enabled = false;
 				m_chart_view->remove_data(field);
 			}
 		}
@@ -228,8 +240,6 @@ void document_window::update_telemetry()
 	m_event_picker->clear();
 	m_event_ranges.clear();
 
-	m_enabled_fields.clear();
-
 	// Add the default fallback range
 	{
 		event_range everything;
@@ -254,15 +264,17 @@ void document_window::update_telemetry()
 			{
 				generic_tree_item *child = root_item->add_child({provider.title});
 
-				for(auto &entry: provider.fields)
-				{
-					child->add_child({entry.enabled,
-									  entry.title + " (" + telemetry_unit_to_string(entry.unit) + ")"}, &entry);
-				}
-
 				if(provider.identifier == "com.laminarresearch.test_main_class")
 				{
 					expanded.push_front(index);
+
+					try
+					{
+						provider.find_field(0).enabled = true; // CPU
+						provider.find_field(1).enabled = true; // GPU
+					}
+					catch(...)
+					{}
 				}
 
 				if(provider.identifier == "com.laminarresarch.sim_apup")
@@ -322,6 +334,12 @@ void document_window::update_telemetry()
 						flush_range(start_timestamp, end_timestamp);
 				}
 
+				for(auto &entry: provider.fields)
+				{
+					child->add_child({entry.enabled,
+									  entry.title + " (" + telemetry_unit_to_string(entry.unit) + ")"}, &entry);
+				}
+
 				index++;
 			}
 		}
@@ -334,7 +352,15 @@ void document_window::update_telemetry()
 		m_providers_view->update();
 
 		for(auto index : expanded)
+		{
 			m_providers_view->expand(model->index(index, 0, QModelIndex()));
+
+			for(auto &field : m_telemetry.providers[index].fields)
+			{
+				if(field.enabled)
+					m_chart_view->add_data(&field);
+			}
+		}
 
 		delete old_model;
 	}
