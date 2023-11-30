@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>2149</width>
-    <height>1271</height>
+    <width>1804</width>
+    <height>1104</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -334,7 +334,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>2149</width>
+     <width>1804</width>
      <height>25</height>
     </rect>
    </property>
@@ -343,6 +343,7 @@
      <string>File</string>
     </property>
     <addaction name="m_action_open"/>
+    <addaction name="m_action_save"/>
     <addaction name="separator"/>
     <addaction name="m_action_exit"/>
    </widget>
@@ -383,6 +384,11 @@
   <action name="m_action_exit">
    <property name="text">
     <string>Exit</string>
+   </property>
+  </action>
+  <action name="m_action_save">
+   <property name="text">
+    <string>Save Trace</string>
    </property>
   </action>
  </widget>

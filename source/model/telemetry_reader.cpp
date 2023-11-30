@@ -246,11 +246,12 @@ QVariant read_variant(file_reader &reader, telemetry_type type)
 }
 
 
-telemetry_container read_telemetry_data(const uint8_t *data, size_t size)
+telemetry_container read_telemetry_data(void *data, size_t size)
 {
 	telemetry_container container;
+	container.raw_data = QByteArray((const char *)data, (int)size);
 
-	file_reader reader(data, 8);
+	file_reader reader((const uint8_t *)data, 8);
 	double highest_timestamp = 0.0;
 
 	while(!reader.at_end(size))
@@ -501,13 +502,10 @@ telemetry_container read_telemetry_data(const QString &path)
 
 	const size_t length = file.bytesAvailable();
 
-	uint8_t *data = new uint8_t[length];
+	void *data = malloc(length);
 	file.read((char *)data, length);
 	file.close();
 
 	telemetry_container container = read_telemetry_data(data, length);
-
-	delete[] data;
-
 	return container;
 }

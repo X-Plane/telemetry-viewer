@@ -23,6 +23,11 @@ document_window::document_window()
 
 	connect(m_action_open, SIGNAL(triggered()), this, SLOT(open_file()));
 
+	m_action_save->setShortcut(QKeySequence::Save);
+	m_action_save->setStatusTip("Save the currentlo loaded telemetry file");
+
+	connect(m_action_save, SIGNAL(triggered()), this, SLOT(save_file()));
+
 	m_action_exit->setShortcut(QKeySequence::Quit);
 
 	connect(m_action_exit, SIGNAL(triggered()), qApp, SLOT(quit()));
@@ -77,8 +82,21 @@ void document_window::open_file()
 
 	QString path = QFileDialog::getOpenFileName(this, tr("Open Telemetry file"), base_path, tr("Telemetry File (*.tlm)"));
 	if(!path.isEmpty())
-	{
 		load_file(path);
+}
+
+void document_window::save_file()
+{
+	if(m_telemetry.raw_data.isEmpty())
+		return;
+
+	QString path = QFileDialog::getSaveFileName(this, tr("Save Telemetry file"), "", tr("Telemetry File (*.tlm)"));
+	if(!path.isEmpty())
+	{
+		QFile file(path);
+
+		if(file.open(QIODevice::WriteOnly))
+			file.write(m_telemetry.raw_data);
 	}
 }
 

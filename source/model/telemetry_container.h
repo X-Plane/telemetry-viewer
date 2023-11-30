@@ -108,6 +108,8 @@ struct telemetry_container
 	int32_t start_time;
 	int32_t end_time;
 
+	QByteArray raw_data;
+
 	telemetry_provider &find_provider(uint16_t runtime_id);
 };
 

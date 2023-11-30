@@ -24,6 +24,7 @@ public:
 
 private slots:
 	void open_file();
+	void save_file();
 	void run_fps_test();
 
 	void range_changed(int32_t value);
