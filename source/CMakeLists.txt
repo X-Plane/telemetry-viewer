@@ -27,8 +27,10 @@ set(SOURCES
 		model/telemetry_container.cpp
 		model/telemetry_reader.cpp
 		utilities/data_decimator.cpp
+		utilities/xplane_installations.cpp
 		utilities/color.h
 		widgets/document_window.cpp
+		widgets/test_runner_dialog.cpp
 		widgets/chart_widget.cpp
 		widgets/time_picker_widget.cpp
 		widgets/timeline_widget.cpp
@@ -45,10 +47,12 @@ set(DEFINITIONS
 qt5_wrap_cpp(SOURCES
 		model/generic_tree_model.h
 		widgets/document_window.h
+		widgets/test_runner_dialog.h
 		widgets/timeline_widget.h
 		widgets/time_picker_widget.h)
 qt5_wrap_ui(SOURCES
-		../resources/ui/document_window.ui)
+		../resources/ui/document_window.ui
+		../resources/ui/test_runner_dialog.ui)
 qt5_add_resources(SOURCES
 		../resources.qrc)
 

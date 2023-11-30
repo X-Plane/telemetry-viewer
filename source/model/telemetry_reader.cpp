@@ -126,6 +126,9 @@ public:
 		map.ival[2] = *m_data ++;
 		map.ival[3] = *m_data ++;
 
+		if(isinf(map.fval) || isnan(map.fval))
+			return 0.0f;
+
 		return map.fval;
 	}
 
@@ -145,6 +148,9 @@ public:
 		map.ival[5] = *m_data ++;
 		map.ival[6] = *m_data ++;
 		map.ival[7] = *m_data ++;
+
+		if(isinf(map.fval) || isnan(map.fval))
+			return 0.0f;
 
 		return map.fval;
 	}

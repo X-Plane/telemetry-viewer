@@ -136,6 +136,8 @@ QString chart_widget::build_html(telemetry_provider_field *field) const
 
 			default:
 				field_data = QString::number(data.second.toFloat());
+
+				qInfo() << data.second.toFloat();
 				break;
 		}
 

@@ -4,12 +4,14 @@
 
 #include <QApplication>
 #include <QFileDialog>
-#include <QtCharts/QChartView>
-#include <QtCharts/QSplineSeries>
+#include <QProcess>
 #include "document_window.h"
-#include "model/telemetry_reader.h"
 
-QT_CHARTS_USE_NAMESPACE
+#include <thread>
+
+#include "test_runner_dialog.h"
+#include "model/telemetry_reader.h"
+#include "utilities/xplane_installations.h"
 
 document_window::document_window()
 {
@@ -24,6 +26,7 @@ document_window::document_window()
 	m_action_exit->setShortcut(QKeySequence::Quit);
 
 	connect(m_action_exit, SIGNAL(triggered()), qApp, SLOT(quit()));
+
 	statusBar()->showMessage("Ready");
 
 	connect(m_start_edit, &time_picker_widget::value_changed, this, &document_window::range_changed);
@@ -42,25 +45,81 @@ document_window::document_window()
 			m_timeline_tree->selectionModel()->select(x.front(), QItemSelectionModel::SelectionFlag::ClearAndSelect|QItemSelectionModel::Rows);
 		}
 	});
+
+	connect(m_run_tests, SIGNAL(pressed()), this, SLOT(run_fps_test()));
+
+	m_installations = get_xplane_installations();
+
+	for(auto &install : m_installations)
+		m_installation_selector->addItem(install.path);
 }
 
-document_window::~document_window()
-{}
+void document_window::load_file(const QString &path)
+{
+	m_telemetry = read_telemetry_data(path);
+
+	m_chart_view->clear();
+	m_chart_view->set_range(m_telemetry.start_time, m_telemetry.end_time);
+
+	update_telemetry();
+	setWindowFilePath(path);
+}
 
 void document_window::open_file()
 {
-	QString path = QFileDialog::getOpenFileName(this, tr("Open Telemetry file"), "", tr("Telemetry File (*.tlm)"));
+	QString base_path = "";
+
+	if(!m_installations.empty())
+		base_path = m_installations[m_installation_selector->currentIndex()].telemetry_path;
+
+	QString path = QFileDialog::getOpenFileName(this, tr("Open Telemetry file"), base_path, tr("Telemetry File (*.tlm)"));
 	if(!path.isEmpty())
 	{
-		m_telemetry = read_telemetry_data(path);
-
-		m_chart_view->clear();
-		m_chart_view->set_range(m_telemetry.start_time, m_telemetry.end_time);
-
-		update_telemetry();
-		setWindowFilePath(path);
+		load_file(path);
 	}
 }
+
+void document_window::run_fps_test()
+{
+	test_runner_dialog dialog(&m_installations[m_installation_selector->currentIndex()]);
+	const int result = dialog.exec();
+
+	if(result)
+	{
+		statusBar()->showMessage("Waiting for the FPS test to finish");
+
+		QString result_path = QDir::tempPath() + "/xplane_telemetry";
+		QString full_result_path = result_path + ".tlm"; // X-Plane is overly helpful by putting the .tlm extension in for us
+
+		// Remove any leftover old telemetry file
+		{
+			QFile file;
+			file.remove(full_result_path);
+		}
+
+		QProcess process;
+		process.start(dialog.get_executable(), dialog.get_arguments(result_path));
+
+		while(!process.waitForFinished())
+			std::this_thread::sleep_for(std::chrono::seconds(1));
+
+		if(process.exitStatus() == QProcess::NormalExit)
+		{
+			QFileInfo info(full_result_path);
+
+			if(info.isFile())
+			{
+				load_file(full_result_path);
+				statusBar()->showMessage("Ready!");
+
+				return;
+			}
+		}
+
+		statusBar()->showMessage("Failed to load telemetry file!");
+	}
+}
+
 
 void document_window::range_changed(int32_t value)
 {
@@ -69,6 +128,9 @@ void document_window::range_changed(int32_t value)
 
 void document_window::event_range_changed(int index)
 {
+	if(index == -1)
+		return;
+
 	m_chart_view->set_range(m_event_ranges[index].start, m_event_ranges[index].end);
 
 	m_start_edit->set_value(m_event_ranges[index].start);
@@ -136,8 +198,13 @@ void document_window::update_telemetry()
 		delete old_model;
 	}
 
+	// Clear the old data
+	m_event_picker->clear();
 	m_event_ranges.clear();
 
+	m_enabled_fields.clear();
+
+	// Add the default fallback range
 	{
 		event_range everything;
 
@@ -148,6 +215,7 @@ void document_window::update_telemetry()
 		m_event_ranges.push_back(everything);
 	}
 
+	// Add all the telmetry providers
 	{
 		generic_tree_item *root_item = new generic_tree_item({"Provider", "Title"});
 
@@ -167,7 +235,9 @@ void document_window::update_telemetry()
 				}
 
 				if(provider.identifier == "com.laminarresearch.test_main_class")
+				{
 					expanded.push_front(index);
+				}
 
 				if(provider.identifier == "com.laminarresarch.sim_apup")
 				{
@@ -180,8 +250,8 @@ void document_window::update_telemetry()
 
 					auto flush_range = [this, &aircraft_events](double start, double end) {
 
-						// We want at least 10 seconds worth of data to add it to the timeline
-						if((end - start) > 10.0)
+						// We want at least 12 seconds worth of data to add it to the timeline
+						if((end - start) > 12.0)
 						{
 							QString title;
 
@@ -194,10 +264,9 @@ void document_window::update_telemetry()
 								title = "Event";
 							}
 
-
 							event_range range;
-							range.start = start + 4.0;
-							range.end = end - 4.0;
+							range.start = start + 8.0;
+							range.end = end - 3.0;
 							range.name = title + QString(" (") + time_picker_widget::format_time(range.start) + " - " + time_picker_widget::format_time(range.end) + QString(")");
 
 							m_event_ranges.push_back(range);
@@ -275,12 +344,8 @@ void document_window::update_telemetry()
 		m_timeline_widget->setTimelineSpans(m_telemetry.event_spans);
 	}
 
-	m_event_picker->clear();
-
 	for(auto &event : m_event_ranges)
 		m_event_picker->addItem(event.name);
-
-	m_enabled_fields.clear();
 
 	m_start_edit->set_range(m_telemetry.start_time, m_telemetry.end_time);
 	m_start_edit->set_value(m_telemetry.start_time);
