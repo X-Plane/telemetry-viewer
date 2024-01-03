@@ -90,10 +90,10 @@ QStringList test_runner_dialog::get_arguments(const QString &telemetry_path) con
 			break;
 
 		case 3:
-			result.push_back("--window=1920x1080");
+			result.push_back("--window=20x40x1940x1120");
 			break;
 		case 4:
-			result.push_back("--window=2560x1440");
+			result.push_back("--window=20x40x2580x1480");
 			break;
 	}
 
