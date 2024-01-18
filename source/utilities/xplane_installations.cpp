@@ -3,6 +3,7 @@
 //
 
 #include <QDir>
+#include <QStandardPaths>
 #include <QDebug>
 
 #include "xplane_installations.h"
@@ -71,6 +72,9 @@ void string_utf_16_to_8(const string_utf16 &input, std::string &output)
 QString xplane_installer_get_base_path()
 {
 #if WIN
+    // Pawel says: I think we could try to use QStandardPaths here although this would need verifying since I think Qt
+    // tries to provide per-app path under standard locations on Windows; https://doc.qt.io/qt-5/qstandardpaths.html
+
 	WCHAR win_path[MAX_PATH+1];
 
 	if(SUCCEEDED(SHGetFolderPathW(nullptr, CSIDL_LOCAL_APPDATA, nullptr, 0, win_path)))
@@ -84,8 +88,11 @@ QString xplane_installer_get_base_path()
 	}
 
 	return QString("C://") + s_installer_file;
+#elif APL
+    return QStandardPaths::writableLocation(QStandardPaths::GenericConfigLocation) + "/" + s_installer_file;
 #else
-	#error "Implement for other platforms"
+    // TODO: on Linux it's $HOME/.x-plane
+    #error "Implement for other platforms"
 #endif
 }
 
@@ -104,6 +111,21 @@ void parse_install_executables(xplane_installation &installation)
 		{
 			installation.executables.push_back(file.fileName());
 		}
+#elif APL
+        if (file.isDir() && file.fileName().startsWith("X-Plane") && file.fileName().endsWith("app"))
+        {
+            QDir subdir(file.filePath() + "/" + "Contents/MacOS");
+            QFileInfoList subentries = subdir.entryInfoList();
+            // e.g. X-Plane_NODEV_OPT.app/Contents/MacOS/X-Plane_NODEV_OPT
+            for (auto const &subentry : subentries) {
+                if (subentry.isFile() && subentry.fileName().startsWith("X-Plane")) {
+                    auto name = file.fileName() + "/Contents/MacOS/" + subentry.fileName();
+                    printf("name = %s\n", name.toUtf8().constData());
+                    installation.executables.push_back(name);
+                    break;
+                }
+            }
+        }
 #else
 	#error "Implement for other platforms"
 #endif
