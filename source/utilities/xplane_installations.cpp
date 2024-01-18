@@ -120,7 +120,6 @@ void parse_install_executables(xplane_installation &installation)
             for (auto const &subentry : subentries) {
                 if (subentry.isFile() && subentry.fileName().startsWith("X-Plane")) {
                     auto name = file.fileName() + "/Contents/MacOS/" + subentry.fileName();
-                    printf("name = %s\n", name.toUtf8().constData());
                     installation.executables.push_back(name);
                     break;
                 }
