@@ -187,6 +187,12 @@ void document_window::run_fps_test()
 		QProcess process;
 		process.start(m_test_runner_dialog->get_executable(), m_test_runner_dialog->get_arguments(result_path));
 
+        if(!process.waitForStarted())
+        {
+            statusBar()->showMessage("Failed to start FPS test!");
+            return;
+        }
+
 		while(!process.waitForFinished())
 			std::this_thread::sleep_for(std::chrono::seconds(1));
 
