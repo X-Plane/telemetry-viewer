@@ -6,6 +6,7 @@
 #include <QTextStream>
 
 #include "test_runner_dialog.h"
+#include "utilities/settings.h"
 
 test_runner_dialog::test_runner_dialog(xplane_installation *installation) :
 	m_installation(installation)
@@ -50,7 +51,103 @@ test_runner_dialog::test_runner_dialog(xplane_installation *installation) :
 	m_resolution_preset->addItem("Fullscreen 1440p");
 	m_resolution_preset->addItem("Window 1080p");
 	m_resolution_preset->addItem("Window 1440p");
+
+	load_settings();
+
+	connect(m_executable, qOverload<int>(&QComboBox::currentIndexChanged), this, &test_runner_dialog::combo_box_selection_changed);
+	connect(m_replay_file, qOverload<int>(&QComboBox::currentIndexChanged), this, &test_runner_dialog::combo_box_selection_changed);
+	connect(m_weather_preset, qOverload<int>(&QComboBox::currentIndexChanged), this, &test_runner_dialog::combo_box_selection_changed);
+	connect(m_settings_preset, qOverload<int>(&QComboBox::currentIndexChanged), this, &test_runner_dialog::combo_box_selection_changed);
+	connect(m_resolution_preset, qOverload<int>(&QComboBox::currentIndexChanged), this, &test_runner_dialog::combo_box_selection_changed);
+
+	connect(m_additional_commands, &QLineEdit::textChanged, this, &test_runner_dialog::line_text_changed);
 }
+
+void test_runner_dialog::load_settings()
+{
+	QSettings settings = open_settings();
+
+	settings.beginGroup("test_runner");
+
+	if(settings.value("version", 1).toInt() != 1)
+	{
+		settings.endGroup();
+		return;
+	}
+
+
+	{
+		const QString executable = settings.value("executable", "").toString();
+
+		for(int i = 0; i < m_installation->executables.size(); ++ i)
+		{
+			if(m_installation->executables[i] == executable)
+			{
+				m_executable->setCurrentIndex(i);
+				break;
+			}
+		}
+	}
+	{
+		const QString replay = settings.value("replays", "").toString();
+
+		for(int i = 0; i < m_replay_files.size(); ++ i)
+		{
+			if(m_replay_files[i] == replay)
+			{
+				m_replay_file->setCurrentIndex(i);
+				break;
+			}
+		}
+	}
+
+	{
+		const int weather_preset = settings.value("weather_preset", 0).toInt();
+		m_weather_preset->setCurrentIndex(weather_preset);
+	}
+	{
+		const int settings_preset = settings.value("settings_preset", 0).toInt();
+		m_settings_preset->setCurrentIndex(settings_preset);
+	}
+	{
+		const int resolution_preset = settings.value("resolution_preset", 0).toInt();
+		m_resolution_preset->setCurrentIndex(resolution_preset);
+	}
+
+	m_additional_commands->setText(settings.value("additional_commands", "").toString());
+
+	settings.endGroup();
+}
+
+void test_runner_dialog::save_settings()
+{
+	QSettings settings = open_settings();
+
+	settings.beginGroup("test_runner");
+
+	settings.setValue("executable", m_installation->executables[m_executable->currentIndex()]);
+	settings.setValue("replay", m_replay_files[m_replay_file->currentIndex()]);
+
+	settings.setValue("weather_preset", m_weather_preset->currentIndex());
+	settings.setValue("settings_preset", m_settings_preset->currentIndex());
+	settings.setValue("resolution_preset", m_resolution_preset->currentIndex());
+
+	settings.setValue("additional_commands", m_additional_commands->text());
+
+	settings.endGroup();
+}
+
+
+
+void test_runner_dialog::combo_box_selection_changed(int index)
+{
+	save_settings();
+}
+void test_runner_dialog::line_text_changed(const QString &text)
+{
+	save_settings();
+}
+
 
 uint32_t test_runner_dialog::get_fps_test() const
 {

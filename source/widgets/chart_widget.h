@@ -22,6 +22,8 @@ public:
 
 	void set_range(int32_t start, int32_t end);
 
+	void update_data();
+
 private:
 	struct chart_data
 	{
@@ -34,7 +36,6 @@ private:
 	};
 
 	QString build_html(telemetry_provider_field *field) const;
-	void update_data();
 
 	int32_t m_start;
 	int32_t m_end;

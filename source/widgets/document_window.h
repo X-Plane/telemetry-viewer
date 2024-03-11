@@ -7,6 +7,8 @@
 
 #include <QMainWindow>
 #include <QTreeView>
+#include <QSettings>
+#include <QFileInfo>
 #include <ui_document_window.h>
 
 #include "utilities/xplane_installations.h"
@@ -44,6 +46,9 @@ private:
 
 	void update_telemetry();
 	void load_file(const QString &path);
+	void touch_telemetry_file(const QFileInfo &file_info);
+
+	QString m_base_dir;
 
 	telemetry_container m_telemetry;
 	std::vector<event_range> m_event_ranges;

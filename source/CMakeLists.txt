@@ -29,6 +29,7 @@ set(SOURCES
 		model/telemetry_reader.cpp
 		utilities/data_decimator.cpp
 		utilities/run_statistics.cpp
+		utilities/settings.cpp
 		utilities/xplane_installations.cpp
 		utilities/color.h
 		widgets/document_window.cpp

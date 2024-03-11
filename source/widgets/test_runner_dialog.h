@@ -24,6 +24,12 @@ public:
 private:
 	uint32_t get_fps_test() const;
 
+	void combo_box_selection_changed(int index);
+	void line_text_changed(const QString &text);
+
+	void load_settings();
+	void save_settings();
+
 	xplane_installation *m_installation;
 
 	QVector<QString> m_replay_files;

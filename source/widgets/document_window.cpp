@@ -14,6 +14,7 @@
 #include "test_runner_dialog.h"
 #include "model/telemetry_reader.h"
 #include "utilities/xplane_installations.h"
+#include "utilities/settings.h"
 #include "utilities/run_statistics.h"
 
 document_window::document_window() :
@@ -47,7 +48,7 @@ document_window::document_window() :
 
 	connect(m_timeline_widget, &timeline_widget::spanFocused, [this](uint64_t id){
 		auto model = m_timeline_tree->model();
-		auto x = model->match(model->index(0,0, {}), Qt::DisplayRole, (quint64) id, 1, Qt::MatchFlag::MatchExactly|Qt::MatchFlag::MatchRecursive);
+		auto x = model->match(model->index(0,0, {}), Qt::DisplayRole, id, 1, Qt::MatchFlag::MatchExactly|Qt::MatchFlag::MatchRecursive);
 		if (!x.empty())
 		{
 			m_timeline_tree->scrollTo(x.front(),QAbstractItemView::ScrollHint::PositionAtTop);
@@ -59,8 +60,38 @@ document_window::document_window() :
 
 	m_installations = get_xplane_installations();
 
+	QSettings settings = open_settings();
+
+	m_base_dir = settings.value("base_path", "").toString();
+
+	const QString selected_install = settings.value("installation", "").toString();
+
 	for(auto &install : m_installations)
+	{
 		m_installation_selector->addItem(install.path);
+
+		if(selected_install == install.path)
+			m_installation_selector->setCurrentIndex(m_installation_selector->count() - 1);
+	}
+
+	connect(m_installation_selector, qOverload<int>(&QComboBox::currentIndexChanged), [this](int index) {
+
+		QSettings settings = open_settings();
+		settings.setValue("installation", m_installations[index].path);
+
+	});
+
+	QString last_file = settings.value("last_file", "").toString();
+	if(!last_file.isEmpty() && !m_base_dir.isEmpty())
+	{
+		QFileInfo file(m_base_dir + "/" + last_file);
+		if(file.exists())
+		{
+			load_file(file.filePath());
+
+			m_chart_view->update_data();
+		}
+	}
 }
 document_window::~document_window()
 {
@@ -133,14 +164,19 @@ void document_window::load_file(const QString &path)
 
 void document_window::open_file()
 {
-	QString base_path = "";
+	QString base_path = m_base_dir;
 
-	if(!m_installations.empty())
+	if(!m_installations.empty() && base_path.isEmpty())
 		base_path = m_installations[m_installation_selector->currentIndex()].telemetry_path;
 
 	QString path = QFileDialog::getOpenFileName(this, tr("Open Telemetry file"), base_path, tr("Telemetry File (*.tlm)"));
-	if(!path.isEmpty())
+	QFileInfo info(path);
+
+	if(info.exists())
+	{
+		touch_telemetry_file(info);
 		load_file(path);
+	}
 }
 
 void document_window::save_file()
@@ -148,14 +184,39 @@ void document_window::save_file()
 	if(m_telemetry.raw_data.isEmpty())
 		return;
 
-	QString path = QFileDialog::getSaveFileName(this, tr("Save Telemetry file"), "", tr("Telemetry File (*.tlm)"));
+	QString base_path = m_base_dir;
+
+	if(!m_installations.empty() && base_path.isEmpty())
+		base_path = m_installations[m_installation_selector->currentIndex()].telemetry_path;
+
+	QString path = QFileDialog::getSaveFileName(this, tr("Save Telemetry file"), base_path, tr("Telemetry File (*.tlm)"));
+
 	if(!path.isEmpty())
 	{
 		QFile file(path);
 
 		if(file.open(QIODevice::WriteOnly))
+		{
 			file.write(m_telemetry.raw_data);
+
+			QFileInfo info(file);
+			touch_telemetry_file(info);
+		}
 	}
+}
+
+void document_window::touch_telemetry_file(const QFileInfo &file_info)
+{
+	QString file_path = file_info.filePath();
+	QString file_name = file_info.fileName();
+
+	file_path.remove(file_path.length() - file_name.length(), file_name.length());
+
+	m_base_dir = file_path;
+
+	QSettings settings = open_settings();
+	settings.setValue("base_path", m_base_dir);
+	settings.setValue("last_file", file_name);
 }
 
 void document_window::run_fps_test()

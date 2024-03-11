@@ -1,0 +1,12 @@
+//
+// Created by Sidney on 11/03/2024.
+//
+
+#include <QApplication>
+#include "settings.h"
+
+QSettings open_settings()
+{
+	QString settings_file = QApplication::applicationDirPath() + "/settings.ini";
+	return QSettings(settings_file, QSettings::IniFormat);
+}
