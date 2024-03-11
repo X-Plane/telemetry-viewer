@@ -33,6 +33,7 @@ int main(int argc, char *argv[])
 	QApplication app(argc, argv);
 	app.setApplicationName("Telemetry Viewer");
 	app.setOrganizationName("Laminar Research");
+	app.setApplicationVersion("0.4");
 
 	apply_dark_theme(app);
 

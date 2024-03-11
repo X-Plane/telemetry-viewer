@@ -7,6 +7,7 @@
 #include <QProcess>
 #include <QString>
 #include <QTextStream>
+#include <QTimer>
 #include <thread>
 
 #include "document_window.h"
@@ -17,8 +18,7 @@
 #include "utilities/settings.h"
 #include "utilities/run_statistics.h"
 
-document_window::document_window() :
-	m_test_runner_dialog(nullptr)
+document_window::document_window()
 {
 	setupUi(this);
 	setWindowTitle(QString("Telemetry Viewer"));
@@ -29,7 +29,7 @@ document_window::document_window() :
 	connect(m_action_open, SIGNAL(triggered()), this, SLOT(open_file()));
 
 	m_action_save->setShortcut(QKeySequence::Save);
-	m_action_save->setStatusTip("Save the currentlo loaded telemetry file");
+	m_action_save->setStatusTip("Save the currently loaded telemetry file");
 
 	connect(m_action_save, SIGNAL(triggered()), this, SLOT(save_file()));
 
@@ -49,7 +49,7 @@ document_window::document_window() :
 	connect(m_timeline_widget, &timeline_widget::spanFocused, [this](uint64_t id){
 		auto model = m_timeline_tree->model();
 		auto x = model->match(model->index(0,0, {}), Qt::DisplayRole, id, 1, Qt::MatchFlag::MatchExactly|Qt::MatchFlag::MatchRecursive);
-		if (!x.empty())
+		if(!x.empty())
 		{
 			m_timeline_tree->scrollTo(x.front(),QAbstractItemView::ScrollHint::PositionAtTop);
 			m_timeline_tree->selectionModel()->select(x.front(), QItemSelectionModel::SelectionFlag::ClearAndSelect|QItemSelectionModel::Rows);
@@ -88,14 +88,12 @@ document_window::document_window() :
 		if(file.exists())
 		{
 			load_file(file.filePath());
-
-			m_chart_view->update_data();
+			QTimer::singleShot(500, m_chart_view, SLOT(update_data()));
 		}
 	}
 }
 document_window::~document_window()
 {
-	delete m_test_runner_dialog;
 }
 
 
@@ -156,10 +154,19 @@ void document_window::load_file(const QString &path)
 	m_telemetry = read_telemetry_data(path);
 
 	m_chart_view->clear();
-	set_time_range(m_telemetry.start_time, m_telemetry.end_time);
 
 	update_telemetry();
 	setWindowFilePath(path);
+
+	if(m_event_ranges.size() > 1)
+	{
+		m_event_picker->setCurrentIndex(1);
+		range_changed(1);
+	}
+	else
+	{
+		set_time_range(m_telemetry.start_time, m_telemetry.end_time);
+	}
 }
 
 void document_window::open_file()
@@ -222,17 +229,9 @@ void document_window::touch_telemetry_file(const QFileInfo &file_info)
 void document_window::run_fps_test()
 {
 	xplane_installation *installation = &m_installations[m_installation_selector->currentIndex()];
+	test_runner_dialog runner(installation);
 
-	if(!m_test_runner_dialog || m_test_runner_dialog->get_installation() != installation)
-	{
-		delete m_test_runner_dialog;
-
-		m_test_runner_dialog = new test_runner_dialog(installation);
-	}
-
-	const int result = m_test_runner_dialog->exec();
-
-	if(result)
+	if(runner.exec())
 	{
 		statusBar()->showMessage("Waiting for the FPS test to finish");
 
@@ -246,13 +245,13 @@ void document_window::run_fps_test()
 		}
 
 		QProcess process;
-		process.start(m_test_runner_dialog->get_executable(), m_test_runner_dialog->get_arguments(result_path));
+		process.start(runner.get_executable(), runner.get_arguments(result_path));
 
-        if(!process.waitForStarted())
-        {
-            statusBar()->showMessage("Failed to start FPS test!");
-            return;
-        }
+		if(!process.waitForStarted())
+		{
+			statusBar()->showMessage("Failed to start FPS test!");
+			return;
+		}
 
 		while(!process.waitForFinished())
 			std::this_thread::sleep_for(std::chrono::seconds(1));
@@ -264,13 +263,6 @@ void document_window::run_fps_test()
 			if(info.isFile())
 			{
 				load_file(full_result_path);
-
-				if(m_event_ranges.size() > 1)
-				{
-					m_event_picker->setCurrentIndex(1);
-					range_changed(1);
-				}
-
 				statusBar()->showMessage("Ready!");
 
 				return;

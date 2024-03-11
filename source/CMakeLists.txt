@@ -49,6 +49,7 @@ set(DEFINITIONS
 # Qt crap
 qt5_wrap_cpp(SOURCES
 		model/generic_tree_model.h
+		widgets/chart_widget.h
 		widgets/document_window.h
 		widgets/test_runner_dialog.h
 		widgets/timeline_widget.h

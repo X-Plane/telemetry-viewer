@@ -20,10 +20,11 @@ class test_runner_dialog;
 class document_window final : public QMainWindow, public Ui::document_window, public generic_tree_model_delegate
 {
 Q_OBJECT
-
 public:
 	document_window();
 	~document_window();
+
+	void load_file(const QString &path);
 
 	bool tree_model_data_did_change(generic_tree_model *model, generic_tree_item *item, int index, const QVariant &data) override;
 
@@ -45,7 +46,6 @@ private:
 	void set_time_range(int32_t start, int32_t end);
 
 	void update_telemetry();
-	void load_file(const QString &path);
 	void touch_telemetry_file(const QFileInfo &file_info);
 
 	QString m_base_dir;
@@ -54,7 +54,6 @@ private:
 	std::vector<event_range> m_event_ranges;
 
 	QVector<xplane_installation> m_installations;
-	test_runner_dialog *m_test_runner_dialog;
 };
 
 #endif //SPIRV_STUDIO_DOCUMENT_WINDOW_H

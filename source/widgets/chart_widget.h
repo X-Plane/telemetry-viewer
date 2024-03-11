@@ -11,9 +11,10 @@ struct telemetry_provider_field;
 
 class chart_widget : public QWebEngineView
 {
+Q_OBJECT
 public:
 	chart_widget(QWidget *parent = nullptr);
-	~chart_widget();
+	~chart_widget() override;
 
 	void clear();
 
@@ -22,6 +23,7 @@ public:
 
 	void set_range(int32_t start, int32_t end);
 
+public slots:
 	void update_data();
 
 private:
