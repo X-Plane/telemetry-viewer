@@ -357,6 +357,8 @@
     <addaction name="separator"/>
     <addaction name="m_action_save"/>
     <addaction name="separator"/>
+    <addaction name="m_action_close"/>
+    <addaction name="separator"/>
     <addaction name="m_action_exit"/>
    </widget>
    <widget class="QMenu" name="menuEdit">
@@ -405,12 +407,17 @@
   </action>
   <action name="m_action_new">
    <property name="text">
-    <string>New</string>
+    <string>New Window</string>
    </property>
   </action>
   <action name="m_action_clear_recents">
    <property name="text">
     <string>Clear Menu</string>
+   </property>
+  </action>
+  <action name="m_action_close">
+   <property name="text">
+    <string>Close Trace</string>
    </property>
   </action>
  </widget>

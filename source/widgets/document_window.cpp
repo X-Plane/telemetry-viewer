@@ -19,26 +19,34 @@
 #include "utilities/settings.h"
 #include "utilities/run_statistics.h"
 
-document_window::document_window()
+static document_window *s_first_document = nullptr;
+
+document_window::document_window() :
+	m_next_window(s_first_document)
 {
+	s_first_document = this;
+
 	setupUi(this);
 	setWindowTitle(QString("Telemetry Viewer"));
 
+	m_action_new->setShortcut(QKeySequence::New);
+	m_action_new->setStatusTip("Create a new window");
+	connect(m_action_new, &QAction::triggered, this, &document_window::new_file);
+
 	m_action_open->setShortcut(QKeySequence::Open);
 	m_action_open->setStatusTip("Open a telemetry file");
-
 	connect(m_action_open, &QAction::triggered, this, &document_window::open_file);
 
 	m_action_save->setShortcut(QKeySequence::Save);
 	m_action_save->setStatusTip("Save the currently loaded telemetry file");
-
 	connect(m_action_save, &QAction::triggered, this, &document_window::save_file);
 
+	m_action_close->setShortcut(QKeySequence::Close);
+	m_action_close->setStatusTip("Close the telemetry file");
+	connect(m_action_close, &QAction::triggered, this, &document_window::close);
+
 	m_action_exit->setShortcut(QKeySequence::Quit);
-
 	connect(m_action_exit, &QAction::triggered, qApp, &QApplication::quit);
-
-	statusBar()->showMessage("Ready");
 
 	connect(m_start_edit, &time_picker_widget::value_changed, this, &document_window::range_changed);
 	connect(m_end_edit, &time_picker_widget::value_changed, this, &document_window::range_changed);
@@ -62,9 +70,6 @@ document_window::document_window()
 	m_installations = get_xplane_installations();
 
 	QSettings settings = open_settings();
-
-	m_base_dir = settings.value("base_path", "").toString();
-
 	const QString selected_install = settings.value("installation", "").toString();
 
 	for(auto &install : m_installations)
@@ -117,21 +122,111 @@ document_window::document_window()
 
 	connect(m_action_clear_recents, &QAction::triggered, this, &document_window::clear_recent_files);
 
-	QString last_file = settings.value("last_file", "").toString();
-	if(!last_file.isEmpty() && !m_base_dir.isEmpty())
+	statusBar()->showMessage("Ready");
+}
+document_window::document_window(QSettings &state) :
+	document_window()
+{
+	restoreGeometry(state.value("geometry").toByteArray());
+
+	QString path = state.value("file", "").toString();
+	QFileInfo file(path);
+
+	if(file.exists())
 	{
-		QFileInfo file(m_base_dir + "/" + last_file);
-		if(file.exists())
-		{
-			load_file(file.filePath());
-			QTimer::singleShot(500, m_chart_view, &chart_widget::update_data);
-		}
+		load_file(file.filePath());
+
+		int32_t start_value = state.value("start", m_start_edit->get_value()).toInt();
+		int32_t end_value = state.value("end", m_end_edit->get_value()).toInt();
+
+		set_time_range(start_value, end_value);
+		QTimer::singleShot(500, m_chart_view, &chart_widget::update_data);
 	}
 }
+
 document_window::~document_window()
 {
 	for(auto &action : m_recent_file_actions)
 		delete action;
+
+	if(this == s_first_document)
+		s_first_document = m_next_window;
+	else
+	{
+		document_window *temp = s_first_document;
+		while(temp)
+		{
+			if(temp->m_next_window == this)
+			{
+				temp->m_next_window = m_next_window;
+				break;
+			}
+		}
+	}
+}
+
+void document_window::closeEvent(QCloseEvent *event)
+{
+	delete this;
+}
+
+void document_window::restore_state()
+{
+	QSettings settings = open_settings();
+
+	const int count = settings.beginReadArray("documents");
+	if(count == 0)
+	{
+		document_window *window = new document_window();
+		window->show();
+
+		settings.endArray();
+		return;
+	}
+
+	for(int i = 0; i < count; ++ i)
+	{
+		settings.setArrayIndex(i);
+
+		document_window *window = new document_window(settings);
+		window->show();
+	}
+
+	settings.endArray();
+}
+
+void document_window::store_state()
+{
+	QSettings settings = open_settings();
+
+	settings.beginWriteArray("documents");
+
+	int i = 0;
+	document_window *temp = s_first_document;
+
+	while(temp)
+	{
+		settings.setArrayIndex(i ++);
+
+		temp->save_state(settings);
+		temp = temp->m_next_window;
+	}
+
+	settings.endArray();
+}
+
+void document_window::save_state(QSettings &state)
+{
+	QString path = windowFilePath();
+
+	state.setValue("geometry", saveGeometry());
+
+	if(!path.isEmpty())
+	{
+		state.setValue("file", path);
+		state.setValue("start", m_start_edit->get_value());
+		state.setValue("end", m_end_edit->get_value());
+	}
 }
 
 void document_window::clear_recent_files()
@@ -215,6 +310,12 @@ void document_window::load_file(const QString &path)
 	}
 }
 
+void document_window::new_file()
+{
+	document_window *window = new document_window();
+	window->show();
+}
+
 void document_window::open_file()
 {
 	QString base_path = m_base_dir;
@@ -266,10 +367,6 @@ void document_window::touch_telemetry_file(const QFileInfo &file_info)
 	file_path.remove(file_path.length() - file_name.length(), file_name.length());
 
 	m_base_dir = file_path;
-
-	QSettings settings = open_settings();
-	settings.setValue("base_path", m_base_dir);
-	settings.setValue("last_file", file_name);
 }
 
 void document_window::run_fps_test()

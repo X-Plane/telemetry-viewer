@@ -22,13 +22,20 @@ class document_window final : public QMainWindow, public Ui::document_window, pu
 Q_OBJECT
 public:
 	document_window();
-	~document_window();
+	document_window(QSettings &state);
+	~document_window() override;
+
+	static void restore_state();
+	static void store_state();
 
 	void load_file(const QString &path);
-
 	bool tree_model_data_did_change(generic_tree_model *model, generic_tree_item *item, int index, const QVariant &data) override;
 
+protected:
+	void closeEvent(QCloseEvent *event) override;
+
 private slots:
+	void new_file();
 	void open_file();
 	void save_file();
 	void clear_recent_files();
@@ -45,6 +52,7 @@ private:
 		QString name;
 	};
 
+	void save_state(QSettings &state);
 	void set_time_range(int32_t start, int32_t end);
 
 	void update_telemetry();
@@ -57,6 +65,8 @@ private:
 	std::vector<event_range> m_event_ranges;
 
 	QVector<xplane_installation> m_installations;
+
+	document_window *m_next_window;
 };
 
 #endif //SPIRV_STUDIO_DOCUMENT_WINDOW_H

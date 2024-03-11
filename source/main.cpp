@@ -30,15 +30,18 @@ int main(int argc, char *argv[])
 {
 	QCoreApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
 
-	QApplication app(argc, argv);
-	app.setApplicationName("Telemetry Viewer");
-	app.setOrganizationName("Laminar Research");
-	app.setApplicationVersion("0.4");
+	QCoreApplication::setApplicationName("Telemetry Viewer");
+	QCoreApplication::setOrganizationName("Laminar Research");
+	QCoreApplication::setApplicationVersion("0.4");
 
+	QApplication app(argc, argv);
 	apply_dark_theme(app);
 
-	document_window window;
-	window.show();
+	document_window::restore_state();
 
-	return QApplication::exec();
+	const int result = QApplication::exec();
+
+	document_window::store_state();
+
+	return result;
 }
