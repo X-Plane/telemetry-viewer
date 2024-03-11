@@ -338,14 +338,23 @@
      <x>0</x>
      <y>0</y>
      <width>1804</width>
-     <height>25</height>
+     <height>26</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
     <property name="title">
      <string>File</string>
     </property>
+    <widget class="QMenu" name="m_menu_recents">
+     <property name="title">
+      <string>Recent Traces...</string>
+     </property>
+     <addaction name="m_action_clear_recents"/>
+    </widget>
+    <addaction name="m_action_new"/>
     <addaction name="m_action_open"/>
+    <addaction name="m_menu_recents"/>
+    <addaction name="separator"/>
     <addaction name="m_action_save"/>
     <addaction name="separator"/>
     <addaction name="m_action_exit"/>
@@ -392,6 +401,16 @@
   <action name="m_action_save">
    <property name="text">
     <string>Save Trace</string>
+   </property>
+  </action>
+  <action name="m_action_new">
+   <property name="text">
+    <string>New</string>
+   </property>
+  </action>
+  <action name="m_action_clear_recents">
+   <property name="text">
+    <string>Clear Menu</string>
    </property>
   </action>
  </widget>

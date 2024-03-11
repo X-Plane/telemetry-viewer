@@ -13,6 +13,7 @@
 #include "document_window.h"
 
 #include "test_runner_dialog.h"
+#include "model/recently_opened.h"
 #include "model/telemetry_reader.h"
 #include "utilities/xplane_installations.h"
 #include "utilities/settings.h"
@@ -26,16 +27,16 @@ document_window::document_window()
 	m_action_open->setShortcut(QKeySequence::Open);
 	m_action_open->setStatusTip("Open a telemetry file");
 
-	connect(m_action_open, SIGNAL(triggered()), this, SLOT(open_file()));
+	connect(m_action_open, &QAction::triggered, this, &document_window::open_file);
 
 	m_action_save->setShortcut(QKeySequence::Save);
 	m_action_save->setStatusTip("Save the currently loaded telemetry file");
 
-	connect(m_action_save, SIGNAL(triggered()), this, SLOT(save_file()));
+	connect(m_action_save, &QAction::triggered, this, &document_window::save_file);
 
 	m_action_exit->setShortcut(QKeySequence::Quit);
 
-	connect(m_action_exit, SIGNAL(triggered()), qApp, SLOT(quit()));
+	connect(m_action_exit, &QAction::triggered, qApp, &QApplication::quit);
 
 	statusBar()->showMessage("Ready");
 
@@ -56,7 +57,7 @@ document_window::document_window()
 		}
 	});
 
-	connect(m_run_tests, SIGNAL(pressed()), this, SLOT(run_fps_test()));
+	connect(m_run_tests, &QPushButton::pressed, this, &document_window::run_fps_test);
 
 	m_installations = get_xplane_installations();
 
@@ -81,6 +82,41 @@ document_window::document_window()
 
 	});
 
+	connect(m_menu_recents, &QMenu::aboutToShow, [this]() {
+
+		m_menu_recents->clear();
+
+		for(auto &action : m_recent_file_actions)
+			delete action;
+
+		m_recent_file_actions.clear();
+
+
+		recently_opened opened;
+
+		for(auto &recent : opened.get_entries())
+		{
+			QAction *open_action = new QAction(recent);
+			open_action->setData(recent);
+
+			m_menu_recents->addAction(open_action);
+
+			connect(open_action, &QAction::triggered, [this, open_action] {
+				load_file(open_action->data().toString());
+			});
+
+			m_recent_file_actions.push_back(open_action);
+		}
+
+		if(!m_menu_recents->isEmpty())
+			m_menu_recents->addSeparator();
+
+		m_menu_recents->addAction(m_action_clear_recents);
+
+	});
+
+	connect(m_action_clear_recents, &QAction::triggered, this, &document_window::clear_recent_files);
+
 	QString last_file = settings.value("last_file", "").toString();
 	if(!last_file.isEmpty() && !m_base_dir.isEmpty())
 	{
@@ -88,14 +124,21 @@ document_window::document_window()
 		if(file.exists())
 		{
 			load_file(file.filePath());
-			QTimer::singleShot(500, m_chart_view, SLOT(update_data()));
+			QTimer::singleShot(500, m_chart_view, &chart_widget::update_data);
 		}
 	}
 }
 document_window::~document_window()
 {
+	for(auto &action : m_recent_file_actions)
+		delete action;
 }
 
+void document_window::clear_recent_files()
+{
+	recently_opened opened;
+	opened.clear_entries();
+}
 
 void document_window::set_time_range(int32_t start, int32_t end)
 {
@@ -157,6 +200,9 @@ void document_window::load_file(const QString &path)
 
 	update_telemetry();
 	setWindowFilePath(path);
+
+	recently_opened opened;
+	opened.add_entry(path);
 
 	if(m_event_ranges.size() > 1)
 	{

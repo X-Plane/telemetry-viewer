@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.20)
 project(tlm-viewer)
 
 set(CMAKE_AUTORCC ON)
+set(CMAKE_AUTOMOC ON)
 
 set(QtComponents
 		Core
@@ -25,6 +26,7 @@ set(SOURCES
 		main.cpp
 		model/generic_tree_item.cpp
 		model/generic_tree_model.cpp
+		model/recently_opened.cpp
 		model/telemetry_container.cpp
 		model/telemetry_reader.cpp
 		utilities/data_decimator.cpp
@@ -46,14 +48,9 @@ set(DEFINITIONS
 	LIN=${IS_LINUX}
 	APL=${IS_MACOS})
 
+message("${SOURCES}")
+
 # Qt crap
-qt5_wrap_cpp(SOURCES
-		model/generic_tree_model.h
-		widgets/chart_widget.h
-		widgets/document_window.h
-		widgets/test_runner_dialog.h
-		widgets/timeline_widget.h
-		widgets/time_picker_widget.h)
 qt5_wrap_ui(SOURCES
 		../resources/ui/document_window.ui
 		../resources/ui/test_runner_dialog.ui)

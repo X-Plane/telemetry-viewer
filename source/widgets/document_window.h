@@ -31,6 +31,8 @@ public:
 private slots:
 	void open_file();
 	void save_file();
+	void clear_recent_files();
+
 	void run_fps_test();
 
 	void range_changed(int32_t value);
@@ -49,6 +51,7 @@ private:
 	void touch_telemetry_file(const QFileInfo &file_info);
 
 	QString m_base_dir;
+	QVector<QAction *> m_recent_file_actions;
 
 	telemetry_container m_telemetry;
 	std::vector<event_range> m_event_ranges;
