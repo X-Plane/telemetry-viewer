@@ -26,11 +26,11 @@ set(SOURCES
 		main.cpp
 		model/generic_tree_item.cpp
 		model/generic_tree_model.cpp
+		model/performance_data.cpp
 		model/recently_opened.cpp
 		model/telemetry_container.cpp
 		model/telemetry_reader.cpp
 		utilities/data_decimator.cpp
-		utilities/run_statistics.cpp
 		utilities/settings.cpp
 		utilities/xplane_installations.cpp
 		utilities/color.h

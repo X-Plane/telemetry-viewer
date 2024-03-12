@@ -162,11 +162,11 @@
           </widget>
           <widget class="QWidget" name="page_2">
            <attribute name="title">
-            <string>Statistics</string>
+            <string>Performance</string>
            </attribute>
            <layout class="QVBoxLayout" name="verticalLayout">
             <item>
-             <widget class="QTextBrowser" name="m_statistics_result"/>
+             <widget class="QTextBrowser" name="m_performance_results"/>
             </item>
            </layout>
           </widget>

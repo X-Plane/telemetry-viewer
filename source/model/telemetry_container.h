@@ -102,6 +102,7 @@ struct telemetry_provider
 	QVector<telemetry_provider_field> fields;
 
 	telemetry_provider_field &find_field(uint8_t id);
+	const telemetry_provider_field &find_field(uint8_t id) const;
 };
 
 struct telemetry_container
@@ -117,7 +118,8 @@ struct telemetry_container
 	QByteArray raw_data;
 
 	telemetry_provider &find_provider(uint16_t runtime_id);
-	telemetry_provider &find_provider(const QString &identifier);
+	const telemetry_provider &find_provider(uint16_t runtime_id) const;
+	const telemetry_provider &find_provider(const QString &identifier) const;
 };
 
 #endif //TELEMETRY_STUDIO_TELEMETRY_CONTAINER_H

@@ -13,11 +13,11 @@
 #include "document_window.h"
 
 #include "test_runner_dialog.h"
+#include "model/performance_data.h"
 #include "model/recently_opened.h"
 #include "model/telemetry_reader.h"
 #include "utilities/xplane_installations.h"
 #include "utilities/settings.h"
-#include "utilities/run_statistics.h"
 
 static document_window *s_first_document = nullptr;
 
@@ -244,19 +244,16 @@ void document_window::set_time_range(int32_t start, int32_t end)
 		QString markdown;
 		QTextStream stream(&markdown);
 
-		auto &provider = m_telemetry.find_provider("com.laminarresearch.test_main_class");
+		performance_data perf(m_telemetry, start, end);
 
-		auto cpu_times = provider.find_field(0).get_data_points_in_range(start, end);
-		auto gpu_times = provider.find_field(1).get_data_points_in_range(start, end);
+		auto build_timing_table = [&stream, &perf](time_domain domain) {
 
-		auto build_timing_table = [&stream](const QVector<telemetry_data_point> &data) {
+			uint32_t p99th = perf.calculate_percentile(0.99, domain) * 1000.0;
+			uint32_t p95th = perf.calculate_percentile(0.95, domain) * 1000.0;
+			uint32_t p90th = perf.calculate_percentile(0.90, domain) * 1000.0;
 
-			uint32_t p99th = calculate_percentile_for_time(0.99, data) * 1000.0;
-			uint32_t p95th = calculate_percentile_for_time(0.95, data) * 1000.0;
-			uint32_t p90th = calculate_percentile_for_time(0.90, data) * 1000.0;
-
-			uint32_t p5th = calculate_percentile_for_time(0.05, data) * 1000.0;
-			uint32_t p1th = calculate_percentile_for_time(0.01, data) * 1000.0;
+			uint32_t p5th = perf.calculate_percentile(0.05, domain) * 1000.0;
+			uint32_t p1th = perf.calculate_percentile(0.01, domain) * 1000.0;
 
 			stream << "| Percentile | Timing |\n";
 			stream << "| ---- | ------ |\n";
@@ -270,20 +267,20 @@ void document_window::set_time_range(int32_t start, int32_t end)
 		};
 
 		stream << "# CPU timing data\n";
-		stream << "The average frame took **" << uint32_t(calculate_average(cpu_times) * 1000.0) << "ms** to compute on the CPU.\n\n";
+		stream << "The average frame took **" << uint32_t(perf.calculate_average(time_domain::cpu) * 1000.0) << "ms** to compute on the CPU.\n\n";
 
-		build_timing_table(cpu_times);
+		build_timing_table(time_domain::cpu);
 
 		stream << "# GPU timing data\n";
-		stream << "The average frame took **" << uint32_t(calculate_average(gpu_times) * 1000.0) << "ms** to compute on the GPU.\n\n";
+		stream << "The average frame took **" << uint32_t(perf.calculate_average(time_domain::gpu) * 1000.0) << "ms** to compute on the GPU.\n\n";
 
-		build_timing_table(gpu_times);
+		build_timing_table(time_domain::gpu);
 
-		m_statistics_result->setMarkdown(markdown);
+		m_performance_results->setMarkdown(markdown);
 	}
 	catch(...)
 	{
-		m_statistics_result->setMarkdown(QString("Failed to get statistics from trace"));
+		m_performance_results->setMarkdown(QString("Failed to get statistics from trace"));
 	}
 }
 

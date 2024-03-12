@@ -49,6 +49,16 @@ telemetry_provider_field &telemetry_provider::find_field(uint8_t id)
 
 	throw std::invalid_argument("Unknown field ID");
 }
+const telemetry_provider_field &telemetry_provider::find_field(uint8_t id) const
+{
+	for(auto &field : fields)
+	{
+		if(field.id == id)
+			return field;
+	}
+
+	throw std::invalid_argument("Unknown field ID");
+}
 
 telemetry_provider &telemetry_container::find_provider(uint16_t runtime_id)
 {
@@ -60,8 +70,18 @@ telemetry_provider &telemetry_container::find_provider(uint16_t runtime_id)
 
 	throw std::invalid_argument("Unknown provider ID");
 }
+const telemetry_provider &telemetry_container::find_provider(uint16_t runtime_id) const
+{
+	for(auto &provider : providers)
+	{
+		if(provider.runtime_id == runtime_id)
+			return provider;
+	}
 
-telemetry_provider &telemetry_container::find_provider(const QString &identifier)
+	throw std::invalid_argument("Unknown provider ID");
+}
+
+const telemetry_provider &telemetry_container::find_provider(const QString &identifier) const
 {
 	for(auto &provider : providers)
 	{
@@ -71,7 +91,6 @@ telemetry_provider &telemetry_container::find_provider(const QString &identifier
 
 	throw std::invalid_argument("Unknown provider identifier");
 }
-
 
 QVector<telemetry_data_point> telemetry_provider_field::get_data_points_in_range(int32_t start, int32_t end) const
 {
