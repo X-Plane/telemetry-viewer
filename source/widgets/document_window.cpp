@@ -67,6 +67,8 @@ document_window::document_window() :
 
 	connect(m_run_tests, &QPushButton::pressed, this, &document_window::run_fps_test);
 
+	m_performance_graph->set_type(chart_type::boxplot);
+
 	m_installations = get_xplane_installations();
 
 	QSettings settings = open_settings();
@@ -140,7 +142,6 @@ document_window::document_window(QSettings &state) :
 		int32_t end_value = state.value("end", m_end_edit->get_value()).toInt();
 
 		set_time_range(start_value, end_value);
-		QTimer::singleShot(500, m_chart_view, &chart_widget::update_data);
 	}
 }
 
@@ -238,34 +239,36 @@ void document_window::clear_recent_files()
 void document_window::set_time_range(int32_t start, int32_t end)
 {
 	m_chart_view->set_range(start, end);
+	m_performance_graph->set_range(start, end);
 
-	try
+
+	QString markdown;
+	QTextStream stream(&markdown);
+
+	performance_data perf(m_telemetry, start, end);
+
+	auto build_timing_table = [&stream, &perf](time_domain domain) {
+
+		uint32_t p99th = perf.calculate_percentile(0.99, domain) * 1000.0;
+		uint32_t p95th = perf.calculate_percentile(0.95, domain) * 1000.0;
+		uint32_t p90th = perf.calculate_percentile(0.90, domain) * 1000.0;
+
+		uint32_t p5th = perf.calculate_percentile(0.05, domain) * 1000.0;
+		uint32_t p1th = perf.calculate_percentile(0.01, domain) * 1000.0;
+
+		stream << "| Percentile | Timing |\n";
+		stream << "| ---- | ------ |\n";
+		stream << "| 99th | " << p99th << "ms |\n";
+		stream << "| 95th | " << p95th << "ms |\n";
+		stream << "| 90th | " << p90th << "ms |\n";
+		stream << "| 5th | " << p5th << "ms |\n";
+		stream << "| 1st | " << p1th << "ms |\n";
+
+		stream << "\n\n";
+	};
+
+	if(perf.contains_data())
 	{
-		QString markdown;
-		QTextStream stream(&markdown);
-
-		performance_data perf(m_telemetry, start, end);
-
-		auto build_timing_table = [&stream, &perf](time_domain domain) {
-
-			uint32_t p99th = perf.calculate_percentile(0.99, domain) * 1000.0;
-			uint32_t p95th = perf.calculate_percentile(0.95, domain) * 1000.0;
-			uint32_t p90th = perf.calculate_percentile(0.90, domain) * 1000.0;
-
-			uint32_t p5th = perf.calculate_percentile(0.05, domain) * 1000.0;
-			uint32_t p1th = perf.calculate_percentile(0.01, domain) * 1000.0;
-
-			stream << "| Percentile | Timing |\n";
-			stream << "| ---- | ------ |\n";
-			stream << "| 99th | " << p99th << "ms |\n";
-			stream << "| 95th | " << p95th << "ms |\n";
-			stream << "| 90th | " << p90th << "ms |\n";
-			stream << "| 5th | " << p5th << "ms |\n";
-			stream << "| 1st | " << p1th << "ms |\n";
-
-			stream << "\n\n";
-		};
-
 		stream << "# CPU timing data\n";
 		stream << "The average frame took **" << uint32_t(perf.calculate_average(time_domain::cpu) * 1000.0) << "ms** to compute on the CPU.\n\n";
 
@@ -278,10 +281,8 @@ void document_window::set_time_range(int32_t start, int32_t end)
 
 		m_performance_results->setMarkdown(markdown);
 	}
-	catch(...)
-	{
+	else
 		m_performance_results->setMarkdown(QString("Failed to get statistics from trace"));
-	}
 }
 
 void document_window::load_file(const QString &path)
@@ -289,6 +290,7 @@ void document_window::load_file(const QString &path)
 	m_telemetry = read_telemetry_data(path);
 
 	m_chart_view->clear();
+	m_performance_graph->clear();
 
 	update_telemetry();
 	setWindowFilePath(path);
@@ -443,6 +445,9 @@ bool document_window::tree_model_data_did_change(generic_tree_model *model, gene
 			{
 				field->enabled = true;
 				m_chart_view->add_data(field);
+
+				if(field->unit == telemetry_unit::time)
+					m_performance_graph->add_data(field);
 			}
 		}
 		else
@@ -451,6 +456,9 @@ bool document_window::tree_model_data_did_change(generic_tree_model *model, gene
 			{
 				field->enabled = false;
 				m_chart_view->remove_data(field);
+
+				if(field->unit == telemetry_unit::time)
+					m_performance_graph->remove_data(field);
 			}
 		}
 
@@ -612,7 +620,12 @@ void document_window::update_telemetry()
 			for(auto &field : m_telemetry.providers[index].fields)
 			{
 				if(field.enabled)
+				{
 					m_chart_view->add_data(&field);
+
+					if(field.unit == telemetry_unit::time)
+						m_performance_graph->add_data(&field);
+				}
 			}
 		}
 

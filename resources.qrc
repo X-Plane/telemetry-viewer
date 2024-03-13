@@ -2,5 +2,6 @@
     <qresource>
         <file>resources/chart.html</file>
         <file>resources/chart.js</file>
+        <file>resources/chart-boxplot.js</file>
     </qresource>
 </RCC>

@@ -1,8 +1,9 @@
 <!DOCTYPE html>
 <html>
 	<head>
-		<title>Test</title>
+		<title>Chart Widget</title>
 		<script src="chart.js" type="text/javascript"></script>
+		<script src="chart-boxplot.js" type="text/javascript"></script>
 		<style>
 			html, body {
 				overflow: hidden;
@@ -19,6 +20,80 @@
 		</div>
 
 		<script>
+
+			var chart = null;
+			let line_chart_options = {
+
+				interaction: {
+					mode: 'x'
+				},
+				scales: {
+					xAxis: {
+						ticks: {
+							stepSize: 10,
+							callback: (value, index, values) => {
+								return format_time(value);
+							}
+						},
+						type: 'linear',
+						position: 'bottom'
+					},
+					memoryAxis: {
+						ticks: {
+							min: 0,
+							callback: (value, index, values) => {
+								return format_bytes(value);
+							}
+						},
+						type: 'linear',
+						display: 'auto',
+						position: 'right'
+					},
+					fpsAxis: {
+						ticks: {
+							min: 0,
+							callback: (value, index, values) => {
+								return `${value} FPS`;
+							}
+						},
+						display: 'auto',
+						position: 'left'
+					},
+					timeAxis: {
+						ticks: {
+							min: 0
+						},
+						type: 'linear',
+						display: 'auto',
+						position: 'left'
+					},
+					valueAxis: {
+						ticks: {
+							min: 0
+						},
+						type: 'linear',
+						display: 'auto',
+						position: 'right'
+					},
+				}
+
+			};
+
+			function update_canvas()
+			{
+				if(!chart)
+					return;
+
+				let width = window.innerWidth || document.body.clientWidth;
+				let height = window.innerHeight || document.body.clientHeight;
+
+				let container = document.getElementById('canvas-container');
+
+				container.style.width = `${width}px`;
+				container.style.height = `${height}px`;
+
+				chart.resize();
+			}
 
 			function format_time(value)
 			{
@@ -51,115 +126,58 @@
 				return `${value.toFixed(2)} ${suffix[index]}`
 			}
 
-			var canvas = document.getElementById('chart');
-			var container = document.getElementById('canvas-container');
+			function instantiate_chart(chart_type, additional_options)
+			{
+				var canvas = document.getElementById('chart');
 
-			var ctx = canvas.getContext('2d');
-			var chart_config = {
-				type: 'bar',
-				options: {
-					animation: {
-						duration: 0
-					},
-					hover: {
-						animationDuration: 0
-					},
-					responsiveAnimationDuration: 0,
-					responsive: true,
-					maintainAspectRatio: false,
-					interaction: {
-						mode: 'x'
-					},
-					scales: {
-						xAxis: {
-							ticks: {
-								stepSize: 10,
-								callback: (value, index, values) => {
-									return format_time(value);
-								}
-							},
-							type: 'linear',
-							position: 'bottom'
+				var ctx = canvas.getContext('2d');
+				var chart_config = {
+					type: chart_type,
+					options: {
+						animation: {
+							duration: 0
 						},
-						memoryAxis: {
-							ticks: {
-								min: 0,
-								callback: (value, index, values) => {
-									return format_bytes(value);
-								}
-							},
-							type: 'linear',
-							display: 'auto',
-							position: 'right'
+						hover: {
+							animationDuration: 0
 						},
-						fpsAxis: {
-							ticks: {
-								min: 0,
-								callback: (value, index, values) => {
-									return `${value} FPS`;
-								}
-							},
-							display: 'auto',
-							position: 'left'
-						},
-						timeAxis: {
-							ticks: {
-								min: 0
-							},
-							type: 'linear',
-							display: 'auto',
-							position: 'left'
-						},
-						valueAxis: {
-							ticks: {
-								min: 0
-							},
-							type: 'linear',
-							display: 'auto',
-							position: 'right'
-						},
-					},
-					pan: {
-						enabled: true,
-						mode: 'xy'
-					},
-					zoom: {
-						enabled: true,
-						mode: 'xy',
-					},
-					plugins: {
-						decimation: {
+						responsiveAnimationDuration: 0,
+						responsive: true,
+						maintainAspectRatio: false,
+						pan: {
 							enabled: true,
-							algorithm: 'min-max'
+							mode: 'xy'
+						},
+						zoom: {
+							enabled: true,
+							mode: 'xy',
+						},
+						plugins: {
+							decimation: {
+								enabled: true,
+								algorithm: 'min-max'
+							}
 						}
 					}
-				}
-			};
+				};
 
-			var chart = new Chart(ctx, chart_config);
+				chart_config.options = { ...chart_config.options, ...additional_options };
 
-			function update_canvas()
-			{
-				var width = window.innerWidth || document.body.clientWidth;
-				var height = window.innerHeight || document.body.clientHeight;
+				if(chart)
+					chart.destroy();
 
-				container.style.width = `${width}px`;
-				container.style.height = `${height}px`;
-
-				chart.resize();
+				chart = new Chart(ctx, chart_config);
+				update_canvas();
 			}
 
-			update_canvas();
-
-			function set_data(data)
+			function set_data(data, data_labels)
 			{
-				chart.data = { datasets: data };
+				chart.data = { datasets: data, labels: data_labels };
 				chart.update();
 			}
 
 			function clear_data()
 			{
-				chart.data = { datasets: [] };
+				chart.data = { datasets: [], labels: [] };
 				chart.update();
 			}
 
