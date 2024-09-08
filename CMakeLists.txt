@@ -19,9 +19,7 @@ else()
 	set(IS_LINUX 0)
 endif()
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 cmake_policy(SET CMP0042 NEW)
-
-include(cmake/target.cmake)
 
 add_subdirectory(source)
