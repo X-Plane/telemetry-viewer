@@ -5,38 +5,65 @@
 #include "performance_data.h"
 
 performance_data::performance_data(const telemetry_container &data, uint32_t start, uint32_t end) :
-	m_data(data)
+	m_container(data)
 {
 	set_range(start, end);
 }
 
 void performance_data::set_range(uint32_t start, uint32_t end)
 {
-	m_cpu_data.clear();
-	m_gpu_data.clear();
+	m_data.clear();
 
-	try
+	auto domain_range = { time_domain::cpu, time_domain::gpu, time_domain::frame_time };
+
+	for(auto &domain : domain_range)
 	{
-		const auto &provider = m_data.find_provider("com.laminarresearch.test_main_class");
+		const telemetry_provider_field *field = field_for_domain(domain);
+		if(!field)
+			continue;
 
-		m_cpu_data = provider.find_field(0).get_data_points_in_range(start, end);
-		m_gpu_data = provider.find_field(1).get_data_points_in_range(start, end);
+		performance_entry &entry = m_data.emplace_back();
+		entry.field = field;
+		entry.domain = domain;
+		entry.data = field->get_data_points_in_range(start, end);
 
-		// Pre sort the CPU and GPU perf data. This allows us to properly calculate percentiles
-		std::sort(m_cpu_data.begin(), m_cpu_data.end(), [](const telemetry_data_point &lhs, const telemetry_data_point &rhs) {
-			return lhs.value.toDouble() < rhs.value.toDouble();
-		});
-		std::sort(m_gpu_data.begin(), m_gpu_data.end(), [](const telemetry_data_point &lhs, const telemetry_data_point &rhs) {
+		std::sort(entry.data.begin(), entry.data.end(), [](const telemetry_data_point &lhs, const telemetry_data_point &rhs) {
 			return lhs.value.toDouble() < rhs.value.toDouble();
 		});
 	}
+}
+
+const telemetry_provider_field *performance_data::field_for_domain(time_domain domain) const
+{
+	try
+	{
+		const auto &provider = m_container.find_provider("com.laminarresearch.test_main_class");
+
+		switch(domain)
+		{
+			case time_domain::cpu:
+				return &provider.find_field(0);
+			case time_domain::gpu:
+				return &provider.find_field(1);
+			case time_domain::frame_time:
+				return &provider.find_field(3);
+		}
+	}
 	catch(...)
 	{}
+
+	return nullptr;
 }
 
 const QVector<telemetry_data_point> &performance_data::get_data_points(time_domain domain) const
 {
-	return (domain == time_domain::cpu) ? m_cpu_data : m_gpu_data;
+	for(auto &entry : m_data)
+	{
+		if(entry.domain == domain)
+			return entry.data;
+	}
+
+	return {};
 }
 
 double performance_data::calculate_percentile(float percentile, time_domain domain) const
@@ -66,12 +93,12 @@ double performance_data::calculate_percentile(float percentile, time_domain doma
 	for(const auto &sample : samples)
 	{
 		if(total_time >= needle)
-			return sample.value.toDouble();
+			return sample.value.toDouble() * 1000.0;
 
 		total_time += sample.value.toDouble();
 	}
 
-	return samples.back().value.toDouble();
+	return samples.back().value.toDouble() * 1000.0;
 }
 double performance_data::calculate_average(time_domain domain) const
 {
@@ -85,5 +112,5 @@ double performance_data::calculate_average(time_domain domain) const
 	for(const auto &sample : data_points)
 		sum += sample.value.toDouble();
 
-	return sum / data_points.size();
+	return (sum / data_points.size()) * 1000.0;
 }

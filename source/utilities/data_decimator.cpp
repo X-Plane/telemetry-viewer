@@ -4,7 +4,6 @@
 
 #include "data_decimator.h"
 #include "model/telemetry_container.h"
-#include <cmath>
 
 QVector<telemetry_data_point> decimate_data(const QVector<telemetry_data_point> &input, uint32_t threshold)
 {
@@ -24,7 +23,7 @@ QVector<telemetry_data_point> decimate_data(const QVector<telemetry_data_point> 
 	{
 		// Calculate the average
 		size_t range_start = floor((i + 1) * increment) + 1;
-		size_t range_end = std::min((int)(floor((i + 2) * increment) + 1), input.size());
+		size_t range_end = std::min((qsizetype)(floor((i + 2) * increment) + 1), input.size());
 
 		double average_x = 0.0;
 		double average_y = 0.0;
@@ -41,7 +40,7 @@ QVector<telemetry_data_point> decimate_data(const QVector<telemetry_data_point> 
 
 
 		range_start = floor((i + 0) * increment) + 1;
-		range_end = std::min((int)(floor((i + 1) * increment) + 1), input.size());
+		range_end = std::min((qsizetype)(floor((i + 1) * increment) + 1), input.size());
 
 		const double point_a_x = input[a].timestamp;
 		const double point_a_y = input[a].value.toDouble();

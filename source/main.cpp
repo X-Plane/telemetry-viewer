@@ -1,8 +1,7 @@
 #include <QApplication>
-#include <QStyleFactory>
 #include "widgets/document_window.h"
 
-void apply_dark_theme(QApplication &app)
+QString apply_dark_theme()
 {
 	// https://gist.github.com/QuantumCD/6245215
 	QPalette palette;
@@ -21,9 +20,10 @@ void apply_dark_theme(QApplication &app)
 	palette.setColor(QPalette::Highlight, QColor(42, 130, 218));
 	palette.setColor(QPalette::HighlightedText, Qt::black);
 
-	app.setPalette(palette);
-	app.setStyle(QStyleFactory::create("Fusion"));
-	app.setStyleSheet("QToolTip { color: #ffffff; background-color: #2a82da; border: 1px solid white; }");
+	QApplication::setPalette(palette);
+	QApplication::setStyle(QStyleFactory::create("Fusion"));
+
+	return "QToolTip { color: #ffffff; background-color: #2a82da; border: 1px solid white; }";
 }
 
 int main(int argc, char *argv[])
@@ -34,8 +34,10 @@ int main(int argc, char *argv[])
 	QCoreApplication::setOrganizationName("Laminar Research");
 	QCoreApplication::setApplicationVersion("0.4");
 
+	QString style_sheet = apply_dark_theme();
+
 	QApplication app(argc, argv);
-	apply_dark_theme(app);
+	app.setStyleSheet(style_sheet);
 
 	document_window::restore_state();
 

@@ -5,9 +5,11 @@
 #ifndef TELEMETRY_STUDIO_CHART_WIDGET_H
 #define TELEMETRY_STUDIO_CHART_WIDGET_H
 
-#include <QWebEngineView>
+#include <QtCharts/QtCharts>
+#include <QChartView>
+#include "model/telemetry_container.h"
 
-struct telemetry_data_point;
+enum class telemetry_unit : uint8_t;
 struct telemetry_provider_field;
 
 enum class chart_type
@@ -16,13 +18,12 @@ enum class chart_type
 	boxplot
 };
 
-class chart_widget : public QWebEngineView
+class chart_widget : public QChartView
 {
 Q_OBJECT
 public:
 	chart_widget(QWidget *parent = nullptr);
-
-	void show_developer_tools() const;
+	~chart_widget() override;
 
 	void clear();
 
@@ -32,10 +33,18 @@ public:
 	void set_range(int32_t start, int32_t end);
 	void set_type(chart_type type);
 
-public slots:
-	void update_data();
-
 private:
+	struct chart_axis
+	{
+		telemetry_unit unit;
+		QAbstractAxis *axis;
+		bool range_locked;
+		Qt::Alignment alignment;
+
+		double minimum;
+		double maximum;
+	};
+
 	struct chart_data
 	{
 		chart_data() = default;
@@ -43,15 +52,24 @@ private:
 		chart_data &operator =(chart_data &&) = default;
 
 		telemetry_provider_field *field;
-		QString data;
+		bool is_hidden = false;
+
+		QLineSeries *line_series = nullptr;
+		QBoxSet *box_set = nullptr;
+		chart_axis *axis = nullptr;
+
+		telemetry_data_point min_value;
+		telemetry_data_point max_value;
 	};
 
-	void enumerate_field(telemetry_provider_field *field, std::function<void (const telemetry_data_point &)> &&callback) const;
+	void build_chart_axis(telemetry_unit unit);
 
-	QString build_html(telemetry_provider_field *field) const;
+	chart_axis *get_chart_axis_for_field(telemetry_provider_field *field) const;
+	chart_data &get_data_for_field(telemetry_provider_field *field);
 
-	QString build_line_html(telemetry_provider_field *field) const;
-	QString build_boxplot_html(telemetry_provider_field *field) const;
+	QLineSeries *build_line_series(telemetry_provider_field *field) const;
+
+	void update_ranges();
 
 	chart_type m_type;
 
@@ -59,8 +77,9 @@ private:
 	int32_t m_end;
 
 	std::vector<chart_data> m_data;
-	bool m_rebuild_chart;
-	bool m_is_loaded;
+
+	QValueAxis *m_x_axis;
+	QVector<chart_axis *> m_axes;
 };
 
 #endif //TELEMETRY_STUDIO_CHART_WIDGET_H

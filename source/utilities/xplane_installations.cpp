@@ -193,7 +193,7 @@ QString xplaneify_path(const QString &full_path)
 	// X-Plane stupidly will not accept / as a separator after the drive name
 	if(full_path.length() > 3)
 	{
-		if(full_path[1] == ':' && full_path[2] == "/")
+		if(full_path[1] == ':' && full_path[2] == '/')
 		{
 			QString result = full_path;
 			result[2] = '\\';

@@ -8,6 +8,7 @@
 #include <QString>
 #include <QVector>
 #include <QVariant>
+#include <QColor>
 #include <cstdint>
 
 enum class telemetry_type : uint8_t
@@ -82,6 +83,7 @@ struct telemetry_provider_field
 {
 	QVector<telemetry_data_point> get_data_points_in_range(int32_t start, int32_t end) const;
 	telemetry_data_point get_data_point_after_time(int32_t time) const;
+	QPair<telemetry_data_point, telemetry_data_point> get_min_max_data_point_in_range(int32_t start, int32_t end) const;
 
 	bool enabled;
 	uint8_t id;
@@ -89,7 +91,7 @@ struct telemetry_provider_field
 	telemetry_type type;
 	telemetry_unit unit;
 	QString title;
-	QString color;
+	QColor color;
 	QVector<telemetry_data_point> data_points;
 };
 

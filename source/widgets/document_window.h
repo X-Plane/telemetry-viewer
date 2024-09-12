@@ -44,6 +44,7 @@ private slots:
 
 	void range_changed(int32_t value);
 	void event_range_changed(int index);
+	void mode_changed(int index);
 
 private:
 	struct event_range

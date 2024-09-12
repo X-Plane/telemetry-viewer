@@ -162,7 +162,7 @@ public:
 		QString result(length, '\0');
 
 		for(uint8_t i = 0; i < length; i ++)
-			result[i] = *m_data ++;
+			result[i] = QChar(*m_data ++);
 
 		return result;
 	}
@@ -238,7 +238,7 @@ QVariant read_variant(file_reader &reader, telemetry_type type)
 
 		case telemetry_type::string:
 		{
-			return QVariant(QVariant(reader.read_string()));
+			return QVariant(reader.read_string());
 		}
 	}
 

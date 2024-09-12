@@ -4,95 +4,37 @@
 
 #include <QStringBuilder>
 #include "chart_widget.h"
-#include "../model/telemetry_container.h"
-
-static QString get_widget_axis(telemetry_unit unit)
-{
-	switch(unit)
-	{
-		case telemetry_unit::value:
-			return "valueAxis";
-		case telemetry_unit::memory:
-			return "memoryAxis";
-		case telemetry_unit::fps:
-			return "fpsAxis";
-		case telemetry_unit::time:
-		case telemetry_unit::duration:
-			return "timeAxis";
-	}
-
-	return "valueAxis";
-}
-
+#include "model/telemetry_container.h"
+#include "utilities/color.h"
 
 chart_widget::chart_widget(QWidget *parent) :
-	QWebEngineView(parent),
+	QChartView(parent),
 	m_type(chart_type::line),
 	m_start(0),
-	m_end(std::numeric_limits<int32_t>::max()),
-	m_rebuild_chart(true),
-	m_is_loaded(false)
+	m_end(std::numeric_limits<int32_t>::max())
 {
-	load(QUrl("qrc:/resources/chart.html"));
+	m_x_axis = new QValueAxis();
+	m_x_axis->setTitleText("Timeline");
+	m_x_axis->setTickType(QValueAxis::TicksDynamic);
 
-	QWebEnginePage *current_page = page();
 
-	connect(current_page, &QWebEnginePage::loadFinished, [this] {
-		m_is_loaded = true;
-		update_data();
-	});
+	build_chart_axis(telemetry_unit::time);
+	build_chart_axis(telemetry_unit::value);
+	build_chart_axis(telemetry_unit::fps);
+	build_chart_axis(telemetry_unit::memory);
+
+	QChart *chart = new QChart();
+	setChart(chart);
+
+	chart->addAxis(m_x_axis, Qt::AlignBottom);
+
+	for(auto &axis : m_axes)
+		chart->addAxis(axis->axis, axis->alignment);
 }
-
-void chart_widget::show_developer_tools() const
+chart_widget::~chart_widget()
 {
-	QWebEngineView *dev_tools = new QWebEngineView();
-
-	dev_tools->page()->setInspectedPage(page());
-	dev_tools->show();
-}
-
-
-void chart_widget::update_data()
-{
-	if(!m_is_loaded)
-		return;
-
-	QString js;
-
-	if(m_rebuild_chart)
-	{
-		QString type;
-		QString additional_options = "{}";
-
-		switch(m_type)
-		{
-			case chart_type::line:
-				type = "line";
-				additional_options = "line_chart_options";
-				break;
-
-			case chart_type::boxplot:
-				type = "violin";
-				break;
-		}
-
-		js = js % "instantiate_chart('" % type % "', " % additional_options % ");\n";
-		m_rebuild_chart = false;
-	}
-
-	if(!m_data.empty())
-	{
-		js = js % "set_data([ ";
-
-		for(auto &entry : m_data)
-			js = js % entry.data;
-
-		js = js % "], [ \"\" ]);\n";
-	}
-	else
-		js = js % "clear_data();\n";
-
-	page()->runJavaScript(js);
+	for(auto &axis : m_axes)
+		delete axis;
 }
 
 void chart_widget::set_range(int32_t start, int32_t end)
@@ -100,10 +42,26 @@ void chart_widget::set_range(int32_t start, int32_t end)
 	m_start = start;
 	m_end = end;
 
-	for(auto &entry : m_data)
-		entry.data = build_html(entry.field);
+	uint32_t interval = abs(end - start);
 
-	update_data();
+	if(interval >= 5 * 60)
+		m_x_axis->setTickInterval(60);
+	else if(interval >= 50)
+		m_x_axis->setTickInterval(10);
+	else
+		m_x_axis->setTickInterval(1);
+
+	m_x_axis->setRange(start, end);
+
+	for(auto &data : m_data)
+	{
+		auto [ min_value, max_value ] = data.field->get_min_max_data_point_in_range(m_start, m_end);
+
+		data.min_value = min_value;
+		data.max_value = max_value;
+	}
+
+	update_ranges();
 }
 
 void chart_widget::set_type(chart_type type)
@@ -112,132 +70,207 @@ void chart_widget::set_type(chart_type type)
 		return;
 
 	m_type = type;
-	update_data();
 }
 
-
-void chart_widget::add_data(telemetry_provider_field *field)
+void chart_widget::build_chart_axis(telemetry_unit unit)
 {
-	chart_data data;
-	data.field = field;
-	data.data = build_html(field);
+	chart_axis *axis = new chart_axis();
+	axis->unit = unit;
+	axis->range_locked = false;
+	axis->alignment = Qt::AlignLeft;
 
-	m_data.push_back(std::move(data));
-	update_data();
+	switch(unit)
+	{
+		case telemetry_unit::value:
+			axis->axis = new QValueAxis();
+			axis->axis->setTitleText("Value");
+			break;
+		case telemetry_unit::memory:
+			axis->axis = new QLogValueAxis();
+			axis->axis->setTitleText("Bytes");
+			axis->alignment = Qt::AlignRight;
+			break;
+		case telemetry_unit::fps:
+			axis->axis = new QValueAxis();
+			axis->axis->setTitleText("FPS");
+			axis->alignment = Qt::AlignRight;
+			break;
+		case telemetry_unit::time:
+			axis->axis = new QValueAxis();
+			axis->axis->setTitleText("Time");
+			break;
+
+		default:
+			axis->axis = nullptr;
+	}
+
+	m_axes.append(axis);
 }
-void chart_widget::remove_data(telemetry_provider_field *field)
+
+chart_widget::chart_axis *chart_widget::get_chart_axis_for_field(telemetry_provider_field *field) const
+{
+	telemetry_unit unit = field->unit;
+	if(unit == telemetry_unit::duration)
+		unit = telemetry_unit::time;
+
+	chart_axis *fallback = nullptr;
+
+	for(auto &axis : m_axes)
+	{
+		if(axis->unit == unit)
+			return axis;
+
+		if(axis->unit == telemetry_unit::value)
+			fallback = axis;
+	}
+
+	return fallback;
+}
+
+void chart_widget::update_ranges()
+{
+	for(auto &axis : m_axes)
+	{
+		axis->minimum = std::numeric_limits<double>::max();
+		axis->maximum = 0.0;
+	}
+
+	for(auto &data : m_data)
+	{
+		if(!data.line_series || data.is_hidden || data.axis->range_locked)
+			continue;
+
+		if(data.axis->maximum < data.max_value.value.toDouble())
+			data.axis->maximum = data.max_value.value.toDouble();
+		if(data.axis->minimum > data.min_value.value.toDouble())
+			data.axis->minimum = data.min_value.value.toDouble();
+	}
+
+	auto round_up_to_nearest = [](double value, double N) {
+		return std::ceil(value / N) * N;
+	};
+
+	for(auto &axis : m_axes)
+	{
+		switch(axis->unit)
+		{
+			case telemetry_unit::value:
+				axis->axis->setRange(0, axis->maximum);
+				break;
+			case telemetry_unit::fps:
+				axis->axis->setRange(0, round_up_to_nearest(axis->maximum, 5.0));
+				break;
+			case telemetry_unit::time:
+				axis->axis->setRange(0, std::min(round_up_to_nearest(axis->maximum, 0.01), 0.1));
+				break;
+			case telemetry_unit::memory:
+				axis->axis->setRange(0, axis->maximum);
+				break;
+		}
+	}
+}
+
+chart_widget::chart_data &chart_widget::get_data_for_field(telemetry_provider_field *field)
 {
 	auto iterator = std::find_if(m_data.begin(), m_data.end(), [&](const chart_data &data) {
 		return (field == data.field);
 	});
 
-	m_data.erase(iterator);
-	update_data();
+	if(iterator != m_data.end())
+		return *iterator;
+
+	chart_data &data = m_data.emplace_back();
+	data.field = field;
+
+	return data;
+}
+
+void chart_widget::add_data(telemetry_provider_field *field)
+{
+	chart_data &data = get_data_for_field(field);
+
+	if(!data.line_series)
+	{
+		data.line_series = build_line_series(field);
+		data.axis = get_chart_axis_for_field(field);
+
+		chart()->addSeries(data.line_series);
+
+		data.line_series->attachAxis(m_x_axis);
+		data.line_series->attachAxis(data.axis->axis);
+
+		auto [ min_value, max_value ] = field->get_min_max_data_point_in_range(m_start, m_end);
+		data.min_value = min_value;
+		data.max_value = max_value;
+	}
+
+	if(data.is_hidden)
+	{
+		data.line_series->show();
+		data.is_hidden = false;
+	}
+
+	update_ranges();
+}
+void chart_widget::remove_data(telemetry_provider_field *field)
+{
+	chart_data &data = get_data_for_field(field);
+
+	if(data.line_series)
+	{
+		if(!data.is_hidden)
+		{
+			data.line_series->hide();
+			data.is_hidden = true;
+		}
+
+		update_ranges();
+	}
 }
 
 void chart_widget::clear()
 {
-	m_data.clear();
-	update_data();
-}
-
-
-QString chart_widget::build_html(telemetry_provider_field *field) const
-{
-	switch(m_type)
+	for(auto &data : m_data)
 	{
-		case chart_type::line:
-			return build_line_html(field);
-		case chart_type::boxplot:
-			return build_boxplot_html(field);
+		for(auto &axis : data.line_series->attachedAxes())
+			data.line_series->detachAxis(axis);
 	}
+
+	chart()->removeAllSeries();
+	m_data.clear();
 }
 
-QString chart_widget::build_line_html(telemetry_provider_field *field) const
+QLineSeries *chart_widget::build_line_series(telemetry_provider_field *field) const
 {
-	QString result = QString("{\n")
-					 % "borderWidth: 2,\n"
-					 % "showLine: true,\n"
-					 % "type: 'line',\n"
-					 % "label: '" % field->title % "',\n"
-					 % "fill: false,\n"
-					 % "borderColor: '" % field->color % "',\n"
-					 % "yAxisID: '" % get_widget_axis(field->unit) % "',\n"
-					 % "data: [\n";
+	QLineSeries *series = new QLineSeries();
+	series->setColor(field->color);
+	series->setName(field->title);
 
-	enumerate_field(field, [&](const telemetry_data_point &data) {
-		QString field_data;
+	QPen pen = series->pen();
+	pen.setWidth(2);
+	series->setPen(pen);
 
-		switch(field->unit)
-		{
-			case telemetry_unit::duration:
-			{
-				QPointF point = data.value.toPointF();
-				field_data = QString::number(point.y() - point.x());
-
-				break;
-			}
-
-			default:
-				field_data = QString::number(data.value.toFloat());
-				break;
-		}
-
-		result = result % "{x:" % QString::number(data.timestamp) % ",y:" % field_data % "},\n";
-	});
-
-	result = result % "]\n";
-	result = result % "},\n";
-
-	return result;
-}
-
-QString chart_widget::build_boxplot_html(telemetry_provider_field *field) const
-{
-	QString result = QString("{\n")
-					 % "type: 'violin',\n"
-					 % "borderWidth: 2,\n"
-					 % "label: '" % field->title % "',\n"
-					 % "borderColor: '" % field->color % "',\n"
-					 % "data: [ [\n";
-
-	enumerate_field(field, [&](const telemetry_data_point &data) {
-
-		QString field_data = "[ ";
-
-		switch(field->unit)
-		{
-			case telemetry_unit::duration:
-			{
-				QPointF point = data.value.toPointF();
-				field_data = QString::number(point.y() - point.x());
-
-				break;
-			}
-
-			default:
-				field_data = QString::number(data.value.toFloat());
-				break;
-		}
-
-		result = result % field_data %  ", ";
-	});
-
-	result = result % "] ]\n";
-	result = result % "},\n";
-
-	return result;
-}
-
-void chart_widget::enumerate_field(telemetry_provider_field *field, std::function<void (const telemetry_data_point &)> &&callback) const
-{
 	for(auto &data : field->data_points)
 	{
-		if(data.timestamp < m_start)
-			continue;
-		if(data.timestamp > m_end) // Data is in order!
-			break;
+		qreal field_data;
 
-		callback(data);
+		switch(field->unit)
+		{
+			case telemetry_unit::duration:
+			{
+				QPointF point = data.value.toPointF();
+				field_data = point.y() - point.x();
+
+				break;
+			}
+
+			default:
+				field_data = data.value.toFloat();
+				break;
+		}
+
+		series->append(data.timestamp, field_data);
 	}
+
+	return series;
 }

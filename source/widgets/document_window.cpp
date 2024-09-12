@@ -51,6 +51,7 @@ document_window::document_window() :
 	connect(m_start_edit, &time_picker_widget::value_changed, this, &document_window::range_changed);
 	connect(m_end_edit, &time_picker_widget::value_changed, this, &document_window::range_changed);
 	connect(m_event_picker, qOverload<int>(&QComboBox::currentIndexChanged), this, &document_window::event_range_changed);
+	connect(m_mode_selector, qOverload<int>(&QComboBox::currentIndexChanged), this, &document_window::mode_changed);
 
 	m_splitter->setStretchFactor(0, 3);
 	m_splitter->setStretchFactor(1, 1);
@@ -66,8 +67,6 @@ document_window::document_window() :
 	});
 
 	connect(m_run_tests, &QPushButton::pressed, this, &document_window::run_fps_test);
-
-	m_performance_graph->set_type(chart_type::boxplot);
 
 	m_installations = get_xplane_installations();
 
@@ -239,50 +238,76 @@ void document_window::clear_recent_files()
 void document_window::set_time_range(int32_t start, int32_t end)
 {
 	m_chart_view->set_range(start, end);
-	m_performance_graph->set_range(start, end);
-
-
-	QString markdown;
-	QTextStream stream(&markdown);
 
 	performance_data perf(m_telemetry, start, end);
 
-	auto build_timing_table = [&stream, &perf](time_domain domain) {
+	QChart *chart = new QChart();
 
-		uint32_t p99th = perf.calculate_percentile(0.99, domain) * 1000.0;
-		uint32_t p95th = perf.calculate_percentile(0.95, domain) * 1000.0;
-		uint32_t p90th = perf.calculate_percentile(0.90, domain) * 1000.0;
+	struct perf_set
+	{
+		QString name;
+		float percentile;
+	};
 
-		uint32_t p5th = perf.calculate_percentile(0.05, domain) * 1000.0;
-		uint32_t p1th = perf.calculate_percentile(0.01, domain) * 1000.0;
+	const std::array perf_series = {
+		perf_set("P1", 0.01f),
+		perf_set("P5", 0.05f),
+		perf_set("Average", -1.0f),
+		perf_set("P95", 0.95f),
+		perf_set("P99", 0.99f)
+	};
 
-		stream << "| Percentile | Timing |\n";
-		stream << "| ---- | ------ |\n";
-		stream << "| 99th | " << p99th << "ms |\n";
-		stream << "| 95th | " << p95th << "ms |\n";
-		stream << "| 90th | " << p90th << "ms |\n";
-		stream << "| 5th | " << p5th << "ms |\n";
-		stream << "| 1st | " << p1th << "ms |\n";
+	auto build_bar_set = [&](time_domain domain) -> QBarSet * {
 
-		stream << "\n\n";
+		auto field = perf.field_for_domain(domain);
+
+		if(!field)
+			return nullptr;
+
+		QBarSet *set = new QBarSet(field->title);
+		set->setColor(field->color);
+
+		for(auto &perf_set : perf_series)
+		{
+			if(perf_set.percentile <= 0.0f)
+				set->append(perf.calculate_average(domain));
+			else
+				set->append(perf.calculate_percentile(perf_set.percentile, domain));
+		}
+
+		return set;
 	};
 
 	if(perf.contains_data())
 	{
-		stream << "# CPU timing data\n";
-		stream << "The average frame took **" << uint32_t(perf.calculate_average(time_domain::cpu) * 1000.0) << "ms** to compute on the CPU.\n\n";
+		QHorizontalBarSeries *series = new QHorizontalBarSeries();
+		series->append(build_bar_set(time_domain::cpu));
+		series->append(build_bar_set(time_domain::gpu));
+		series->setLabelsVisible(true);
+		series->setLabelsPosition(QAbstractBarSeries::LabelsInsideEnd);
+		series->setLabelsPrecision(3);
+		series->setLabelsFormat("@valuems");
 
-		build_timing_table(time_domain::cpu);
+		chart->addSeries(series);
 
-		stream << "# GPU timing data\n";
-		stream << "The average frame took **" << uint32_t(perf.calculate_average(time_domain::gpu) * 1000.0) << "ms** to compute on the GPU.\n\n";
+		auto y_axis = new QBarCategoryAxis();
 
-		build_timing_table(time_domain::gpu);
+		for(auto &perf_set : perf_series)
+			y_axis->append(perf_set.name);
 
-		m_performance_results->setMarkdown(markdown);
+		chart->addAxis(y_axis, Qt::AlignLeft);
+		series->attachAxis(y_axis);
+
+		auto x_axis = new QValueAxis();
+		x_axis->setLabelFormat("%ims");
+
+		chart->addAxis(x_axis, Qt::AlignBottom);
+
+		series->attachAxis(x_axis);
+		x_axis->applyNiceNumbers();
 	}
-	else
-		m_performance_results->setMarkdown(QString("Failed to get statistics from trace"));
+
+	m_statistics_view->setChart(chart);
 }
 
 void document_window::load_file(const QString &path)
@@ -290,7 +315,6 @@ void document_window::load_file(const QString &path)
 	m_telemetry = read_telemetry_data(path);
 
 	m_chart_view->clear();
-	m_performance_graph->clear();
 
 	update_telemetry();
 	setWindowFilePath(path);
@@ -432,6 +456,11 @@ void document_window::event_range_changed(int index)
 	m_end_edit->set_value(m_event_ranges[index].end);
 }
 
+void document_window::mode_changed(int index)
+{
+	m_chart_view->set_type(index == 0 ? chart_type::line : chart_type::boxplot);
+}
+
 
 bool document_window::tree_model_data_did_change(generic_tree_model *model, generic_tree_item *item, int index, const QVariant &data)
 {
@@ -445,9 +474,6 @@ bool document_window::tree_model_data_did_change(generic_tree_model *model, gene
 			{
 				field->enabled = true;
 				m_chart_view->add_data(field);
-
-				if(field->unit == telemetry_unit::time)
-					m_performance_graph->add_data(field);
 			}
 		}
 		else
@@ -456,9 +482,6 @@ bool document_window::tree_model_data_did_change(generic_tree_model *model, gene
 			{
 				field->enabled = false;
 				m_chart_view->remove_data(field);
-
-				if(field->unit == telemetry_unit::time)
-					m_performance_graph->remove_data(field);
 			}
 		}
 
@@ -479,20 +502,36 @@ void document_window::update_telemetry()
 
 			for(auto &entry : stat.entries)
 			{
-				child->add_child({ entry.first, entry.second });
+				if(entry.second.metaType().id() == QMetaType::QStringList)
+				{
+					bool is_first = true;
+
+					for(auto &string : entry.second.toStringList())
+					{
+						if(is_first)
+						{
+							child->add_child({ entry.first, string });
+							is_first = false;
+						}
+						else
+							child->add_child({ "", string });
+					}
+				}
+				else
+					child->add_child({ entry.first, entry.second });
 			}
 		}
 
-		generic_tree_model *old_model = (generic_tree_model *)m_statistics_view->model();
+		generic_tree_model *old_model = (generic_tree_model *)m_overview_view->model();
 		generic_tree_model *model = new generic_tree_model(root_item);
 
-		m_statistics_view->setModel(model);
-		m_statistics_view->update();
+		m_overview_view->setModel(model);
+		m_overview_view->update();
 
 		for(uint32_t i = 0; i < m_telemetry.statistics.size(); i ++)
 		{
 			const uint32_t index = m_telemetry.statistics.size() - 1 - i;
-			m_statistics_view->expand(model->index(index, 0, QModelIndex()));
+			m_overview_view->expand(model->index(index, 0, QModelIndex()));
 		}
 
 		delete old_model;
@@ -622,9 +661,6 @@ void document_window::update_telemetry()
 				if(field.enabled)
 				{
 					m_chart_view->add_data(&field);
-
-					if(field.unit == telemetry_unit::time)
-						m_performance_graph->add_data(&field);
 				}
 			}
 		}
