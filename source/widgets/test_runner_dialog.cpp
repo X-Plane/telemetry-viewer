@@ -168,6 +168,7 @@ QStringList test_runner_dialog::get_arguments(const QString &telemetry_path) con
 	result.push_back("--weather_seed=1");
 	result.push_back("--time_seed=1");
 	result.push_back("--no_prefs");
+	result.push_back("--event_trace");
 	result.push_back("--fps_test=" + QString::asprintf("%i", get_fps_test()));
 	result.push_back("--load_smo=" + xplaneify_path(m_installation->replay_path + "/" + m_replay_files[m_replay_file->currentIndex()]));
 
