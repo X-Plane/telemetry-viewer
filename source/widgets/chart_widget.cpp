@@ -77,6 +77,7 @@ void chart_widget::build_chart_axis(telemetry_unit unit)
 	chart_axis *axis = new chart_axis();
 	axis->unit = unit;
 	axis->range_locked = false;
+	axis->visible = false;
 	axis->alignment = Qt::AlignLeft;
 
 	switch(unit)
@@ -133,11 +134,18 @@ void chart_widget::update_ranges()
 	{
 		axis->minimum = std::numeric_limits<double>::max();
 		axis->maximum = 0.0;
+
+		axis->visible = false;
 	}
 
 	for(auto &data : m_data)
 	{
-		if(!data.line_series || data.is_hidden || data.axis->range_locked)
+		if(!data.line_series || data.is_hidden)
+			continue;
+
+		data.axis->visible = true;
+
+		if(data.axis->range_locked)
 			continue;
 
 		if(data.axis->maximum < data.max_value.value.toDouble())
@@ -152,6 +160,12 @@ void chart_widget::update_ranges()
 
 	for(auto &axis : m_axes)
 	{
+		if(axis->axis->isVisible() != axis->visible)
+			axis->axis->setVisible(axis->visible);
+
+		if(!axis->visible)
+			continue;
+
 		switch(axis->unit)
 		{
 			case telemetry_unit::value:

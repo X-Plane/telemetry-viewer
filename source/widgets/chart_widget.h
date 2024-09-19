@@ -39,6 +39,7 @@ private:
 		telemetry_unit unit;
 		QAbstractAxis *axis;
 		bool range_locked;
+		bool visible;
 		Qt::Alignment alignment;
 
 		double minimum;
