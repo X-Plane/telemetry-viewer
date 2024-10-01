@@ -3,7 +3,7 @@
 //
 
 #include <QDir>
-#include <QTextStream>
+#include <qclipboard.h>
 
 #include "test_runner_dialog.h"
 #include "utilities/settings.h"
@@ -61,6 +61,14 @@ test_runner_dialog::test_runner_dialog(xplane_installation *installation) :
 	connect(m_resolution_preset, qOverload<int>(&QComboBox::currentIndexChanged), this, &test_runner_dialog::combo_box_selection_changed);
 
 	connect(m_additional_commands, &QLineEdit::textChanged, this, &test_runner_dialog::line_text_changed);
+
+	connect(m_copy_to_clipboard, &QAbstractButton::pressed, [this] {
+
+		QStringList arguments = get_arguments("");
+
+		QClipboard *clipboard = QGuiApplication::clipboard();
+		clipboard->setText(arguments.join(' '));
+	});
 }
 
 void test_runner_dialog::load_settings()
@@ -170,7 +178,7 @@ QStringList test_runner_dialog::get_arguments(const QString &telemetry_path) con
 	result.push_back("--no_prefs");
 	result.push_back("--event_trace");
 	result.push_back("--fps_test=" + QString::asprintf("%i", get_fps_test()));
-	result.push_back("--load_smo=" + xplaneify_path(m_installation->replay_path + "/" + m_replay_files[m_replay_file->currentIndex()]));
+	result.push_back("--load_smo=\"" + xplaneify_path(m_installation->replay_path + "/" + m_replay_files[m_replay_file->currentIndex()]) + "\"");
 
 	if(!telemetry_path.isEmpty())
 		result.push_back("--telemetry_path=" + xplaneify_path(telemetry_path) + "");
