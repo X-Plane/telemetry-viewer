@@ -644,6 +644,9 @@ void document_window::update_telemetry()
 
 				for(auto &entry: provider.fields)
 				{
+					if(entry.data_points.empty())
+						continue;
+
 					child->add_child({entry.enabled,
 									  entry.title + " (" + telemetry_unit_to_string(entry.unit) + ")"}, &entry);
 				}

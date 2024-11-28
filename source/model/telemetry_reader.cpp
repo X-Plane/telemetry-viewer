@@ -502,6 +502,30 @@ telemetry_container read_telemetry_data(void *data, size_t size)
 		}
 	}
 
+	// Expand all fields to have a point at the start and end time
+	for(auto &provider : container.providers)
+	{
+		for(auto &field : provider.fields)
+		{
+			if(field.data_points.empty())
+				continue;
+
+			auto first = field.data_points.first();
+			if(first.timestamp > start_time)
+			{
+				first.timestamp = start_time;
+				field.data_points.push_front(first);
+			}
+
+			auto last = field.data_points.back();
+			if(last.timestamp < end_time)
+			{
+				last.timestamp = end_time;
+				field.data_points.push_back(last);
+			}
+		}
+	}
+
 	container.start_time = floor(start_time);
 	container.end_time = ceil(end_time);
 

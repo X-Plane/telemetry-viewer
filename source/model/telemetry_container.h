@@ -81,8 +81,10 @@ struct telemetry_data_point
 
 struct telemetry_provider_field
 {
-	QVector<telemetry_data_point> get_data_points_in_range(int32_t start, int32_t end) const;
+	telemetry_data_point get_data_point_closest_to_time(int32_t time) const;
 	telemetry_data_point get_data_point_after_time(int32_t time) const;
+
+	QVector<telemetry_data_point> get_data_points_in_range(int32_t start, int32_t end) const;
 	QPair<telemetry_data_point, telemetry_data_point> get_min_max_data_point_in_range(int32_t start, int32_t end) const;
 
 	bool enabled;

@@ -112,12 +112,16 @@ QPair<telemetry_data_point, telemetry_data_point> telemetry_provider_field::get_
 	telemetry_data_point max_value;
 	max_value.timestamp = -1;
 
+	bool found_data_point = false;
+
 	for(auto &data : data_points)
 	{
 		if(data.timestamp < start)
 			continue;
 		if(data.timestamp > end)
 			break;
+
+		found_data_point = true;
 
 		switch(type)
 		{
@@ -168,8 +172,35 @@ QPair<telemetry_data_point, telemetry_data_point> telemetry_provider_field::get_
 		}
 	}
 
+	if(!found_data_point)
+		return qMakePair(get_data_point_closest_to_time(start), get_data_point_closest_to_time(start));
+
 	return qMakePair(min_value, max_value);
 }
+
+telemetry_data_point telemetry_provider_field::get_data_point_closest_to_time(int32_t time) const
+{
+	for(int i = 0; i < data_points.size(); ++ i)
+	{
+		auto &data = data_points[i];
+
+		if(data.timestamp >= time)
+		{
+			if(i > 0)
+			{
+				auto &previous = data_points[i - 1];
+
+				if(fabs(data.timestamp - time) > fabs(previous.timestamp - time))
+					return previous;
+			}
+
+			return data_points[i];
+		}
+	}
+
+	throw std::invalid_argument("No data point before or at time");
+}
+
 telemetry_data_point telemetry_provider_field::get_data_point_after_time(int32_t time) const
 {
 	for(int i = 0; i < data_points.size(); ++ i)
