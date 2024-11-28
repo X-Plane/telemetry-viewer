@@ -10,6 +10,7 @@
 chart_widget::chart_widget(QWidget *parent) :
 	QChartView(parent),
 	m_type(chart_type::line),
+	m_memory_scaling(memory_scaling::megabytes),
 	m_start(0),
 	m_end(std::numeric_limits<int32_t>::max())
 {
@@ -37,12 +38,18 @@ chart_widget::~chart_widget()
 		delete axis;
 }
 
+
+
+
 void chart_widget::set_range(int32_t start, int32_t end)
 {
+	if(m_start == start && m_end == end)
+		return;
+
 	m_start = start;
 	m_end = end;
 
-	uint32_t interval = abs(end - start);
+	const uint32_t interval = abs(end - start);
 
 	if(interval >= 5 * 60)
 		m_x_axis->setTickInterval(60);
@@ -61,7 +68,7 @@ void chart_widget::set_range(int32_t start, int32_t end)
 		data.max_value = max_value;
 	}
 
-	update_ranges();
+	rescale_axes();
 }
 
 void chart_widget::set_type(chart_type type)
@@ -71,6 +78,93 @@ void chart_widget::set_type(chart_type type)
 
 	m_type = type;
 }
+
+void chart_widget::set_memory_scaling(memory_scaling scaling)
+{
+	if(m_memory_scaling == scaling)
+		return;
+
+	m_memory_scaling = scaling;
+
+	bool changed_anything = false;
+
+	for(auto &data : m_data)
+	{
+		if(data.axis->unit != telemetry_unit::memory)
+			continue;
+
+		if(data.line_series)
+		{
+			for(auto &axis : data.line_series->attachedAxes())
+				data.line_series->detachAxis(axis);
+
+			chart()->removeSeries(data.line_series);
+			data.line_series = nullptr;
+
+			build_line_series(data);
+
+			changed_anything = true;
+		}
+	}
+
+	if(changed_anything)
+		rescale_axes();
+}
+
+
+
+void chart_widget::add_data(telemetry_provider_field *field)
+{
+	chart_data &data = get_data_for_field(field);
+
+	if(!data.line_series)
+	{
+		data.axis = get_chart_axis_for_field(field);
+		build_line_series(data);
+
+		auto [ min_value, max_value ] = data.field->get_min_max_data_point_in_range(m_start, m_end);
+
+		data.min_value = min_value;
+		data.max_value = max_value;
+	}
+
+	if(data.is_hidden)
+	{
+		data.line_series->show();
+		data.is_hidden = false;
+	}
+
+	rescale_axes();
+}
+void chart_widget::remove_data(telemetry_provider_field *field)
+{
+	chart_data &data = get_data_for_field(field);
+
+	if(data.line_series)
+	{
+		if(!data.is_hidden)
+		{
+			data.line_series->hide();
+			data.is_hidden = true;
+		}
+
+		rescale_axes();
+	}
+}
+
+void chart_widget::clear()
+{
+	for(auto &data : m_data)
+	{
+		for(auto &axis : data.line_series->attachedAxes())
+			data.line_series->detachAxis(axis);
+	}
+
+	chart()->removeAllSeries();
+	m_data.clear();
+}
+
+
 
 void chart_widget::build_chart_axis(telemetry_unit unit)
 {
@@ -87,8 +181,8 @@ void chart_widget::build_chart_axis(telemetry_unit unit)
 			axis->axis->setTitleText("Value");
 			break;
 		case telemetry_unit::memory:
-			axis->axis = new QLogValueAxis();
-			axis->axis->setTitleText("Bytes");
+			axis->axis = new QValueAxis();
+			axis->axis->setTitleText("Memory");
 			axis->alignment = Qt::AlignRight;
 			break;
 		case telemetry_unit::fps:
@@ -128,62 +222,6 @@ chart_widget::chart_axis *chart_widget::get_chart_axis_for_field(telemetry_provi
 	return fallback;
 }
 
-void chart_widget::update_ranges()
-{
-	for(auto &axis : m_axes)
-	{
-		axis->minimum = std::numeric_limits<double>::max();
-		axis->maximum = 0.0;
-
-		axis->visible = false;
-	}
-
-	for(auto &data : m_data)
-	{
-		if(!data.line_series || data.is_hidden)
-			continue;
-
-		data.axis->visible = true;
-
-		if(data.axis->range_locked)
-			continue;
-
-		if(data.axis->maximum < data.max_value.value.toDouble())
-			data.axis->maximum = data.max_value.value.toDouble();
-		if(data.axis->minimum > data.min_value.value.toDouble())
-			data.axis->minimum = data.min_value.value.toDouble();
-	}
-
-	auto round_up_to_nearest = [](double value, double N) {
-		return std::ceil(value / N) * N;
-	};
-
-	for(auto &axis : m_axes)
-	{
-		if(axis->axis->isVisible() != axis->visible)
-			axis->axis->setVisible(axis->visible);
-
-		if(!axis->visible)
-			continue;
-
-		switch(axis->unit)
-		{
-			case telemetry_unit::value:
-				axis->axis->setRange(0, axis->maximum);
-				break;
-			case telemetry_unit::fps:
-				axis->axis->setRange(0, round_up_to_nearest(axis->maximum, 5.0));
-				break;
-			case telemetry_unit::time:
-				axis->axis->setRange(0, std::min(round_up_to_nearest(axis->maximum, 0.01), 0.1));
-				break;
-			case telemetry_unit::memory:
-				axis->axis->setRange(0, axis->maximum);
-				break;
-		}
-	}
-}
-
 chart_widget::chart_data &chart_widget::get_data_for_field(telemetry_provider_field *field)
 {
 	auto iterator = std::find_if(m_data.begin(), m_data.end(), [&](const chart_data &data) {
@@ -199,63 +237,106 @@ chart_widget::chart_data &chart_widget::get_data_for_field(telemetry_provider_fi
 	return data;
 }
 
-void chart_widget::add_data(telemetry_provider_field *field)
+
+double chart_widget::scale_memory(double bytes) const
 {
-	chart_data &data = get_data_for_field(field);
-
-	if(!data.line_series)
+	switch(m_memory_scaling)
 	{
-		data.line_series = build_line_series(field);
-		data.axis = get_chart_axis_for_field(field);
+		case memory_scaling::bytes:
+			return bytes;
+		case memory_scaling::kilobytes:
+			return bytes / 1024.0;
+		case memory_scaling::megabytes:
+			return bytes / 1024.0 / 1024.0;
+		case memory_scaling::gigabytes:
+			return bytes / 1024.0 / 1024.0 / 1024.0;
 
-		chart()->addSeries(data.line_series);
-
-		data.line_series->attachAxis(m_x_axis);
-		data.line_series->attachAxis(data.axis->axis);
-
-		auto [ min_value, max_value ] = field->get_min_max_data_point_in_range(m_start, m_end);
-		data.min_value = min_value;
-		data.max_value = max_value;
 	}
 
-	if(data.is_hidden)
-	{
-		data.line_series->show();
-		data.is_hidden = false;
-	}
-
-	update_ranges();
-}
-void chart_widget::remove_data(telemetry_provider_field *field)
-{
-	chart_data &data = get_data_for_field(field);
-
-	if(data.line_series)
-	{
-		if(!data.is_hidden)
-		{
-			data.line_series->hide();
-			data.is_hidden = true;
-		}
-
-		update_ranges();
-	}
+	return bytes;
 }
 
-void chart_widget::clear()
+
+
+void chart_widget::rescale_axes()
 {
+	for(auto &axis : m_axes)
+	{
+		axis->minimum = std::numeric_limits<double>::max();
+		axis->maximum = 0.0;
+
+		axis->visible = false;
+	}
+
 	for(auto &data : m_data)
 	{
-		for(auto &axis : data.line_series->attachedAxes())
-			data.line_series->detachAxis(axis);
+		if(!data.line_series || data.is_hidden)
+			continue;
+
+		qDebug() << data.field->title << " min/max: " << data.min_value.value.toDouble() << ", " <<  data.max_value.value.toDouble();
+
+		data.axis->visible = true;
+
+		data.axis->minimum = std::min(data.axis->minimum, data.min_value.value.toDouble());
+		data.axis->maximum = std::max(data.axis->maximum, data.max_value.value.toDouble());
 	}
 
-	chart()->removeAllSeries();
-	m_data.clear();
+	auto round_up_to_nearest = [](double value, double N) {
+		return std::ceil(value / N) * N;
+	};
+
+	auto round_down_to_nearest = [](double value, double N) {
+		return std::floor(value / N) * N;
+	};
+
+	for(auto &axis : m_axes)
+	{
+		if(axis->axis->isVisible() != axis->visible)
+			axis->axis->setVisible(axis->visible);
+
+		if(!axis->visible)
+			continue;
+
+		double min_value = 0.0;
+		double max_value = 0.0;
+
+		switch(axis->unit)
+		{
+			case telemetry_unit::value:
+				min_value = round_down_to_nearest(axis->minimum, 1.0);
+				max_value = round_up_to_nearest(axis->maximum + 1.0, 1.0);
+				break;
+			case telemetry_unit::fps:
+				min_value = axis->minimum;
+				max_value = round_up_to_nearest(axis->maximum, 5.0);
+				break;
+			case telemetry_unit::time:
+				min_value = axis->minimum;
+				max_value = std::min(round_up_to_nearest(axis->maximum, 0.01), 0.1);
+				break;
+			case telemetry_unit::memory:
+				min_value = scale_memory(axis->minimum);
+				max_value = scale_memory(axis->maximum);
+				break;
+
+			default:
+				min_value = axis->minimum;
+				max_value = axis->maximum;
+				break;
+		}
+
+		min_value = std::min(round_down_to_nearest(min_value, 1.0), 0.0);
+
+		qDebug() << axis->axis->titleText() << "->set_range(" << min_value << ", " <<  max_value << ")";
+
+		axis->axis->setRange(min_value, max_value);
+	}
 }
 
-QLineSeries *chart_widget::build_line_series(telemetry_provider_field *field) const
+void chart_widget::build_line_series(chart_data &data) const
 {
+	const auto &field = data.field;
+
 	QLineSeries *series = new QLineSeries();
 	series->setColor(field->color);
 	series->setName(field->title);
@@ -278,6 +359,12 @@ QLineSeries *chart_widget::build_line_series(telemetry_provider_field *field) co
 				break;
 			}
 
+			case telemetry_unit::memory:
+			{
+				field_data = scale_memory(data.value.toDouble());
+				break;
+			}
+
 			default:
 				field_data = data.value.toFloat();
 				break;
@@ -286,5 +373,13 @@ QLineSeries *chart_widget::build_line_series(telemetry_provider_field *field) co
 		series->append(data.timestamp, field_data);
 	}
 
-	return series;
+	chart()->addSeries(series);
+
+	series->attachAxis(m_x_axis);
+	series->attachAxis(data.axis->axis);
+
+	data.line_series = series;
+
+	if(data.is_hidden)
+		series->hide();
 }

@@ -119,6 +119,30 @@
             <widget class="QComboBox" name="m_installation_selector"/>
            </item>
            <item>
+            <widget class="QComboBox" name="m_memory_scaling">
+             <item>
+              <property name="text">
+               <string>Bytes</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>Kilobytes</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>Megabytes</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>Gigabytes</string>
+              </property>
+             </item>
+            </widget>
+           </item>
+           <item>
             <widget class="QComboBox" name="m_mode_selector">
              <item>
               <property name="text">

@@ -18,12 +18,23 @@ enum class chart_type
 	boxplot
 };
 
+enum class memory_scaling
+{
+	bytes,
+	kilobytes,
+	megabytes,
+	gigabytes,
+};
+
 class chart_widget : public QChartView
 {
 Q_OBJECT
 public:
 	chart_widget(QWidget *parent = nullptr);
 	~chart_widget() override;
+
+	void set_memory_scaling(memory_scaling scaling);
+	memory_scaling get_memory_scaling() const { return m_memory_scaling; }
 
 	void clear();
 
@@ -65,14 +76,16 @@ private:
 
 	void build_chart_axis(telemetry_unit unit);
 
+	double scale_memory(double bytes) const;
+
 	chart_axis *get_chart_axis_for_field(telemetry_provider_field *field) const;
 	chart_data &get_data_for_field(telemetry_provider_field *field);
 
-	QLineSeries *build_line_series(telemetry_provider_field *field) const;
-
-	void update_ranges();
+	void build_line_series(chart_data &data) const;
+	void rescale_axes();
 
 	chart_type m_type;
+	memory_scaling m_memory_scaling;
 
 	int32_t m_start;
 	int32_t m_end;

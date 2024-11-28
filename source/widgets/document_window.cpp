@@ -52,6 +52,9 @@ document_window::document_window() :
 	connect(m_end_edit, &time_picker_widget::value_changed, this, &document_window::range_changed);
 	connect(m_event_picker, qOverload<int>(&QComboBox::currentIndexChanged), this, &document_window::event_range_changed);
 	connect(m_mode_selector, qOverload<int>(&QComboBox::currentIndexChanged), this, &document_window::mode_changed);
+	connect(m_memory_scaling, qOverload<int>(&QComboBox::currentIndexChanged), this, &document_window::memory_scale_changed);
+
+	m_memory_scaling->setCurrentIndex((int)m_chart_view->get_memory_scaling());
 
 	m_splitter->setStretchFactor(0, 3);
 	m_splitter->setStretchFactor(1, 1);
@@ -461,6 +464,10 @@ void document_window::mode_changed(int index)
 	m_chart_view->set_type(index == 0 ? chart_type::line : chart_type::boxplot);
 }
 
+void document_window::memory_scale_changed(int index)
+{
+	m_chart_view->set_memory_scaling((memory_scaling)index);
+}
 
 bool document_window::tree_model_data_did_change(generic_tree_model *model, generic_tree_item *item, int index, const QVariant &data)
 {
