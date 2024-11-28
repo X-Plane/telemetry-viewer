@@ -345,32 +345,40 @@ void chart_widget::build_line_series(chart_data &data) const
 	pen.setWidth(2);
 	series->setPen(pen);
 
+	qreal last_time = -1000.0f;
+	qreal last_value = 0.0f;
+
 	for(auto &data : field->data_points)
 	{
-		qreal field_data;
+		// If there is more than a second of time between data changes, repeat the last point again but at the current time
+		// this will prevent the graph interpolating between the last and new value, when the telemetry system assumes values are sticky until they change
+		if(data.timestamp - last_time >= 1.0)
+			series->append(data.timestamp, last_value);
+
+		qreal value;
 
 		switch(field->unit)
 		{
 			case telemetry_unit::duration:
 			{
 				QPointF point = data.value.toPointF();
-				field_data = point.y() - point.x();
-
+				value = point.y() - point.x();
 				break;
 			}
 
 			case telemetry_unit::memory:
-			{
-				field_data = scale_memory(data.value.toDouble());
+				value = scale_memory(data.value.toDouble());
 				break;
-			}
 
 			default:
-				field_data = data.value.toFloat();
+				value = data.value.toFloat();
 				break;
 		}
 
-		series->append(data.timestamp, field_data);
+		series->append(data.timestamp, value);
+
+		last_time = data.timestamp;
+		last_value = value;
 	}
 
 	chart()->addSeries(series);
