@@ -64,7 +64,7 @@ test_runner_dialog::test_runner_dialog(xplane_installation *installation) :
 
 	connect(m_copy_to_clipboard, &QAbstractButton::pressed, [this] {
 
-		QStringList arguments = get_arguments("");
+		QStringList arguments = get_arguments("", true);
 
 		QClipboard *clipboard = QGuiApplication::clipboard();
 		clipboard->setText(arguments.join(' '));
@@ -170,7 +170,7 @@ QString test_runner_dialog::get_executable() const
 	return m_installation->path + "/" + m_installation->executables[m_executable->currentIndex()];
 }
 
-QStringList test_runner_dialog::get_arguments(const QString &telemetry_path) const
+QStringList test_runner_dialog::get_arguments(const QString &telemetry_path, bool escape_paths) const
 {
 	QStringList result;
 	result.push_back("--weather_seed=1");
@@ -178,7 +178,11 @@ QStringList test_runner_dialog::get_arguments(const QString &telemetry_path) con
 	result.push_back("--no_prefs");
 	result.push_back("--event_trace");
 	result.push_back("--fps_test=" + QString::asprintf("%i", get_fps_test()));
-	result.push_back("--load_smo=\"" + xplaneify_path(m_installation->replay_path + "/" + m_replay_files[m_replay_file->currentIndex()]) + "\"");
+
+	if(escape_paths)
+		result.push_back("--load_smo=\"" + xplaneify_path(m_installation->replay_path + "/" + m_replay_files[m_replay_file->currentIndex()]) + "\"");
+	else
+		result.push_back("--load_smo=" + xplaneify_path(m_installation->replay_path + "/" + m_replay_files[m_replay_file->currentIndex()]));
 
 	if(!telemetry_path.isEmpty())
 		result.push_back("--telemetry_path=" + xplaneify_path(telemetry_path) + "");

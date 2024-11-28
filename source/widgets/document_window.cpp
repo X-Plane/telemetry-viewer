@@ -414,7 +414,7 @@ void document_window::run_fps_test()
 		}
 
 		QProcess process;
-		process.start(runner.get_executable(), runner.get_arguments(result_path));
+		process.start(runner.get_executable(), runner.get_arguments(result_path, false));
 
 		if(!process.waitForStarted())
 		{

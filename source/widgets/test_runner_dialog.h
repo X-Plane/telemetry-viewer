@@ -19,7 +19,7 @@ public:
 	xplane_installation *get_installation() const { return m_installation; }
 
 	QString get_executable() const;
-	QStringList get_arguments(const QString &telemetry_path = "") const;
+	QStringList get_arguments(const QString &telemetry_path, bool escape_paths) const;
 
 private:
 	uint32_t get_fps_test() const;
