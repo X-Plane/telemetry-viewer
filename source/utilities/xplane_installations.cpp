@@ -91,8 +91,7 @@ QString xplane_installer_get_base_path()
 #elif APL
     return QStandardPaths::writableLocation(QStandardPaths::GenericConfigLocation) + "/" + s_installer_file;
 #else
-    // TODO: on Linux it's $HOME/.x-plane
-    #error "Implement for other platforms"
+	return QDir::homePath() + "/.x-plane/" + s_installer_file;
 #endif
 }
 
@@ -126,7 +125,10 @@ void parse_install_executables(xplane_installation &installation)
             }
         }
 #else
-	#error "Implement for other platforms"
+		if(file.isFile() && file.fileName().startsWith("X-Plane") && file.fileName().endsWith("_x86_64"))
+		{
+			installation.executables.push_back(file.fileName());
+		}
 #endif
 	}
 }

@@ -65,7 +65,7 @@ set_target_properties(tlm-viewer PROPERTIES OUTPUT_NAME "Telemetry Viewer")
 
 target_compile_definitions(tlm-viewer PRIVATE ${DEFINITIONS})
 target_link_libraries(tlm-viewer ${QT_COMPONENTS})
-target_include_directories(tlm-viewer PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(tlm-viewer PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/widgets)
 
 add_custom_command(TARGET tlm-viewer POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_directory "$<TARGET_FILE_DIR:Qt6::Core>/../plugins/platforms" "$<TARGET_FILE_DIR:tlm-viewer>/platforms")
 
@@ -87,5 +87,5 @@ if(IS_WIN32)
 endif()
 
 if(IS_LINUX)
-	target_link_libraries(tlm-viewer PRIVATE stdc++ m)
+	target_link_libraries(tlm-viewer stdc++ m)
 endif()

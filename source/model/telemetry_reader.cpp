@@ -3,6 +3,8 @@
 //
 
 #include <vector>
+#include <cstdint>
+#include <cmath>
 #include <QFile>
 #include <QPointF>
 #include "../utilities/data_decimator.h"
@@ -126,7 +128,7 @@ public:
 		map.ival[2] = *m_data ++;
 		map.ival[3] = *m_data ++;
 
-		if(isinf(map.fval) || isnan(map.fval))
+		if(std::isinf(map.fval) || std::isnan(map.fval))
 			return 0.0f;
 
 		return map.fval;
@@ -149,7 +151,7 @@ public:
 		map.ival[6] = *m_data ++;
 		map.ival[7] = *m_data ++;
 
-		if(isinf(map.fval) || isnan(map.fval))
+		if(std::isinf(map.fval) || std::isnan(map.fval))
 			return 0.0f;
 
 		return map.fval;
@@ -205,7 +207,7 @@ QVariant read_variant(file_reader &reader, telemetry_type type)
 		}
 		case telemetry_type::uint64:
 		{
-			return QVariant(reader.read_uint64());
+			return QVariant::fromValue(reader.read_uint64());
 		}
 
 
@@ -215,7 +217,7 @@ QVariant read_variant(file_reader &reader, telemetry_type type)
 		}
 		case telemetry_type::int64:
 		{
-			return QVariant(reader.read_int64());
+			return QVariant::fromValue(reader.read_int64());
 		}
 
 		case telemetry_type::floatv:

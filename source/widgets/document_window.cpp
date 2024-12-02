@@ -61,7 +61,7 @@ document_window::document_window() :
 
 	connect(m_timeline_widget, &timeline_widget::spanFocused, [this](uint64_t id){
 		auto model = m_timeline_tree->model();
-		auto x = model->match(model->index(0,0, {}), Qt::DisplayRole, id, 1, Qt::MatchFlag::MatchExactly|Qt::MatchFlag::MatchRecursive);
+		auto x = model->match(model->index(0,0, {}), Qt::DisplayRole, QVariant::fromValue(id), 1, Qt::MatchFlag::MatchExactly|Qt::MatchFlag::MatchRecursive);
 		if(!x.empty())
 		{
 			m_timeline_tree->scrollTo(x.front(),QAbstractItemView::ScrollHint::PositionAtTop);

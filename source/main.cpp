@@ -34,10 +34,15 @@ int main(int argc, char *argv[])
 	QCoreApplication::setOrganizationName("Laminar Research");
 	QCoreApplication::setApplicationVersion("0.4");
 
+#if !LIN
 	QString style_sheet = apply_dark_theme();
 
 	QApplication app(argc, argv);
 	app.setStyleSheet(style_sheet);
+#else
+	QApplication::setStyle(QStyleFactory::create("Fusion"));
+	QApplication app(argc, argv);
+#endif
 
 	document_window::restore_state();
 
