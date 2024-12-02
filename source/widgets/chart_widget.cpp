@@ -273,8 +273,6 @@ void chart_widget::rescale_axes()
 		if(!data.line_series || data.is_hidden)
 			continue;
 
-		qDebug() << data.field->title << " min/max: " << data.min_value.value.toDouble() << ", " <<  data.max_value.value.toDouble();
-
 		data.axis->visible = true;
 
 		data.axis->minimum = std::min(data.axis->minimum, data.min_value.value.toDouble());
@@ -326,8 +324,6 @@ void chart_widget::rescale_axes()
 		}
 
 		min_value = std::min(round_down_to_nearest(min_value, 1.0), 0.0);
-
-		qDebug() << axis->axis->titleText() << "->set_range(" << min_value << ", " <<  max_value << ")";
 
 		axis->axis->setRange(min_value, max_value);
 	}
