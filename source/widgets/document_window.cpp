@@ -578,8 +578,13 @@ void document_window::update_telemetry()
 
 					try
 					{
-						provider.find_field(0).enabled = true; // CPU
-						provider.find_field(1).enabled = true; // GPU
+						auto &cpu = provider.find_field(0);
+						if(!cpu.data_points.empty())
+							cpu.enabled = true;
+
+						auto &gpu = provider.find_field(0);
+						if(!gpu.data_points.empty())
+							gpu.enabled = true;
 					}
 					catch(...)
 					{}
