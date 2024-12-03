@@ -473,13 +473,13 @@
   <customwidget>
    <class>time_picker_widget</class>
    <extends>QWidget</extends>
-   <header>time_picker_widget.h</header>
+   <header>widgets/time_picker_widget.h</header>
    <container>1</container>
   </customwidget>
   <customwidget>
    <class>timeline_widget</class>
    <extends>QGraphicsView</extends>
-   <header>timeline_widget.h</header>
+   <header>widgets/timeline_widget.h</header>
    <slots>
     <slot>zoomIn()</slot>
     <slot>zoomOut()</slot>
@@ -493,7 +493,7 @@
   <customwidget>
    <class>chart_widget</class>
    <extends>QGraphicsView</extends>
-   <header>chart_widget.h</header>
+   <header>widgets/chart_widget.h</header>
   </customwidget>
  </customwidgets>
  <resources/>

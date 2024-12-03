@@ -1,0 +1,42 @@
+name: Release build
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+env:
+  BUILD_TYPE: Release
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [ windows-2022, ubuntu-24.04, macos-14 ]
+      fail-fast: false
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+    - uses: actions/checkout@v4
+    - uses: seanmiddleditch/gha-setup-ninja@master
+    - uses: jurplel/install-qt-action@v4
+      with:
+        version: '6.8.0'
+        modules: 'qtcharts'
+        cache: 'true'
+
+    - name: Configure
+      run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DCMAKE_PREFIX_PATH=${{env.QT_ROOT_DIR}}
+
+    - name: Build
+      run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --target tlm-viewer --parallel
+
+    - name: Install
+      run: cmake --install ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --prefix ${{github.workspace}}/install
+
+    - uses: actions/upload-artifact@v4
+      with:
+        name: ${{matrix.os}}-artifacts
+        path: ${{github.workspace}}/install/bin
+        if-no-files-found: error

@@ -125,7 +125,7 @@ void parse_install_executables(xplane_installation &installation)
             }
         }
 #else
-		if(file.isFile() && file.fileName().startsWith("X-Plane") && file.fileName().endsWith("_x86_64"))
+		if(file.isFile() && file.fileName().startsWith("X-Plane") && file.fileName().endsWith("-x86_64"))
 		{
 			installation.executables.push_back(file.fileName());
 		}

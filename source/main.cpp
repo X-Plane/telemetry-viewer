@@ -28,11 +28,9 @@ QString apply_dark_theme()
 
 int main(int argc, char *argv[])
 {
-	QCoreApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
-
 	QCoreApplication::setApplicationName("Telemetry Viewer");
 	QCoreApplication::setOrganizationName("Laminar Research");
-	QCoreApplication::setApplicationVersion("0.4");
+	QCoreApplication::setApplicationVersion(QString::number(VERSION_MAJOR) % "." % QString::number(VERSION_MINOR) % "." % QString::number(VERSION_PATCH));
 
 #if !LIN
 	QString style_sheet = apply_dark_theme();

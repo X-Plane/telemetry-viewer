@@ -253,11 +253,11 @@ void document_window::set_time_range(int32_t start, int32_t end)
 	};
 
 	const std::array perf_series = {
-		perf_set("P1", 0.01f),
-		perf_set("P5", 0.05f),
-		perf_set("Average", -1.0f),
-		perf_set("P95", 0.95f),
-		perf_set("P99", 0.99f)
+		perf_set{ "P1", 0.01f },
+		perf_set{ "P5", 0.05f },
+		perf_set{ "Average", -1.0f },
+		perf_set{ "P95", 0.95f },
+		perf_set{ "P99", 0.99f }
 	};
 
 	auto build_bar_set = [&](time_domain domain) -> QBarSet * {
