@@ -2,10 +2,66 @@
 // Created by Sidney on 27/07/2020.
 //
 
-#include <QStringBuilder>
+#include <QLegendMarker>
 #include "chart_widget.h"
 #include "model/telemetry_container.h"
 #include "utilities/color.h"
+#include "utilities/performance_calculator.h"
+
+void chart_widget::chart_data::detach() const
+{
+	for(auto &axis : line_series->attachedAxes())
+		line_series->detachAxis(axis);
+	for(auto &axis : box_series->attachedAxes())
+		box_series->detachAxis(axis);
+}
+void chart_widget::chart_data::hide()
+{
+	if(!is_hidden)
+		return;
+
+	line_series->hide();
+	box_series->hide();
+
+	is_hidden = false;
+}
+void chart_widget::chart_data::show()
+{
+	if(!is_hidden)
+		return;
+
+	line_series->show();
+	box_series->show();
+
+	is_hidden = false;
+}
+
+void chart_widget::chart_data::update_box_set(int32_t start, int32_t end) const
+{
+	performance_calculator calc(*field, start, end);
+
+	const size_t count = calc.get_sample_count();
+
+	if(count < 2)
+	{
+		box_set->setValue(QBoxSet::LowerExtreme, 0.0);
+		box_set->setValue(QBoxSet::UpperExtreme, 0.0);
+		box_set->setValue(QBoxSet::Median, 0.0);
+		box_set->setValue(QBoxSet::LowerQuartile, 0.0);
+		box_set->setValue(QBoxSet::UpperQuartile, 0.0);
+
+		return;
+	}
+
+	box_set->setValue(QBoxSet::LowerExtreme, calc.get_minimum());
+	box_set->setValue(QBoxSet::UpperExtreme, calc.get_maximum());
+	box_set->setValue(QBoxSet::Median, calc.get_median_value(0, count));
+	box_set->setValue(QBoxSet::LowerQuartile, calc.get_median_value(0, count / 2));
+	box_set->setValue(QBoxSet::UpperQuartile, calc.get_median_value(count / 2 + (count % 2), count));
+}
+
+
+
 
 chart_widget::chart_widget(QWidget *parent) :
 	QChartView(parent),
@@ -14,30 +70,46 @@ chart_widget::chart_widget(QWidget *parent) :
 	m_start(0),
 	m_end(std::numeric_limits<int32_t>::max())
 {
-	m_x_axis = new QValueAxis();
-	m_x_axis->setTitleText("Timeline");
-	m_x_axis->setTickType(QValueAxis::TicksDynamic);
+	m_timeline_axis = new QValueAxis();
+	m_timeline_axis->setTitleText("Timeline");
+	m_timeline_axis->setTickType(QValueAxis::TicksDynamic);
 
+	m_category_axis = new QBarCategoryAxis();
+	m_category_axis->append("Fields");
 
 	build_chart_axis(telemetry_unit::time);
 	build_chart_axis(telemetry_unit::value);
 	build_chart_axis(telemetry_unit::fps);
 	build_chart_axis(telemetry_unit::memory);
 
-	QChart *chart = new QChart();
-	setChart(chart);
+	m_line_chart = new QChart();
+	m_boxplot_chart = new QChart();
 
-	chart->addAxis(m_x_axis, Qt::AlignBottom);
+	m_line_chart->addAxis(m_timeline_axis, Qt::AlignBottom);
+	m_boxplot_chart->addAxis(m_category_axis, Qt::AlignBottom);
 
 	for(auto &axis : m_axes)
-		chart->addAxis(axis->axis, axis->alignment);
+	{
+		m_line_chart->addAxis(axis->line_axis, axis->alignment);
+		m_boxplot_chart->addAxis(axis->box_axis, axis->alignment);
+	}
+
+	switch(m_type)
+	{
+		case chart_type::line:
+			setChart(m_line_chart);
+			break;
+		case chart_type::boxplot:
+			setChart(m_boxplot_chart);
+			break;
+	}
+
 }
 chart_widget::~chart_widget()
 {
 	for(auto &axis : m_axes)
 		delete axis;
 }
-
 
 
 
@@ -49,23 +121,14 @@ void chart_widget::set_range(int32_t start, int32_t end)
 	m_start = start;
 	m_end = end;
 
-	const uint32_t interval = abs(end - start);
-
-	if(interval >= 5 * 60)
-		m_x_axis->setTickInterval(60);
-	else if(interval >= 50)
-		m_x_axis->setTickInterval(10);
-	else
-		m_x_axis->setTickInterval(1);
-
-	m_x_axis->setRange(start, end);
-
 	for(auto &data : m_data)
 	{
 		auto [ min_value, max_value ] = data.field->get_min_max_data_point_in_range(m_start, m_end);
 
 		data.min_value = min_value;
 		data.max_value = max_value;
+
+		data.update_box_set(m_start, m_end);
 	}
 
 	rescale_axes();
@@ -77,6 +140,18 @@ void chart_widget::set_type(chart_type type)
 		return;
 
 	m_type = type;
+
+	switch(m_type)
+	{
+		case chart_type::line:
+			setChart(m_line_chart);
+			break;
+		case chart_type::boxplot:
+			setChart(m_boxplot_chart);
+			break;
+	}
+
+	rescale_axes();
 }
 
 void chart_widget::set_memory_scaling(memory_scaling scaling)
@@ -86,68 +161,63 @@ void chart_widget::set_memory_scaling(memory_scaling scaling)
 
 	m_memory_scaling = scaling;
 
-	bool changed_anything = false;
+	QVector<telemetry_provider_field *> fields;
 
 	for(auto &data : m_data)
 	{
 		if(data.axis->unit != telemetry_unit::memory)
 			continue;
 
-		if(data.line_series)
-		{
-			for(auto &axis : data.line_series->attachedAxes())
-				data.line_series->detachAxis(axis);
-
-			chart()->removeSeries(data.line_series);
-			data.line_series = nullptr;
-
-			build_line_series(data);
-
-			changed_anything = true;
-		}
+		fields.push_back(data.field);
+		remove_data(data.field);
 	}
 
-	if(changed_anything)
-		rescale_axes();
+	for(auto &field : fields)
+		add_data(field);
 }
+
 
 
 
 void chart_widget::add_data(telemetry_provider_field *field)
 {
-	chart_data &data = get_data_for_field(field);
-
-	if(!data.line_series)
-	{
-		data.axis = get_chart_axis_for_field(field);
-		build_line_series(data);
-
-		auto [ min_value, max_value ] = data.field->get_min_max_data_point_in_range(m_start, m_end);
-
-		data.min_value = min_value;
-		data.max_value = max_value;
-	}
+	chart_data &data = get_or_create_data_for_field(field);
 
 	if(data.is_hidden)
-	{
-		data.line_series->show();
-		data.is_hidden = false;
-	}
+		data.show();
 
 	rescale_axes();
 }
 void chart_widget::remove_data(telemetry_provider_field *field)
 {
-	chart_data &data = get_data_for_field(field);
+	auto iterator = std::find_if(m_data.begin(), m_data.end(), [&](const chart_data &data) {
+		return (field == data.field);
+	});
 
-	if(data.line_series)
+	if(iterator != m_data.end())
 	{
-		if(!data.is_hidden)
-		{
-			data.line_series->hide();
-			data.is_hidden = true;
-		}
+		auto &data = *iterator;
+		data.detach();
 
+		m_line_chart->removeSeries(data.line_series);
+		m_boxplot_chart->removeSeries(data.box_series);
+
+		m_data.erase(iterator);
+		rescale_axes();
+	}
+}
+
+void chart_widget::show_data(telemetry_provider_field *field)
+{
+	add_data(field);
+}
+void chart_widget::hide_data(telemetry_provider_field *field)
+{
+	chart_data &data = get_or_create_data_for_field(field);
+
+	if(!data.is_hidden)
+	{
+		data.hide();
 		rescale_axes();
 	}
 }
@@ -155,12 +225,11 @@ void chart_widget::remove_data(telemetry_provider_field *field)
 void chart_widget::clear()
 {
 	for(auto &data : m_data)
-	{
-		for(auto &axis : data.line_series->attachedAxes())
-			data.line_series->detachAxis(axis);
-	}
+		data.detach();
 
-	chart()->removeAllSeries();
+	m_line_chart->removeAllSeries();
+	m_boxplot_chart->removeAllSeries();
+
 	m_data.clear();
 }
 
@@ -168,36 +237,48 @@ void chart_widget::clear()
 
 void chart_widget::build_chart_axis(telemetry_unit unit)
 {
+	auto build_axis = [](telemetry_unit unit) -> QValueAxis * {
+
+		QValueAxis *axis = nullptr;
+
+		switch(unit)
+		{
+			case telemetry_unit::value:
+				axis = new QValueAxis();
+				axis->setTitleText("Value");
+				break;
+			case telemetry_unit::memory:
+				axis = new QValueAxis();
+				axis->setTitleText("Memory");
+				break;
+			case telemetry_unit::fps:
+				axis = new QValueAxis();
+				axis->setTitleText("FPS");
+				break;
+			case telemetry_unit::time:
+				axis = new QValueAxis();
+				axis->setTitleText("Time");
+				break;
+
+			default:
+				break;
+		}
+
+		return axis;
+
+	};
+
 	chart_axis *axis = new chart_axis();
 	axis->unit = unit;
 	axis->range_locked = false;
 	axis->visible = false;
 	axis->alignment = Qt::AlignLeft;
 
-	switch(unit)
-	{
-		case telemetry_unit::value:
-			axis->axis = new QValueAxis();
-			axis->axis->setTitleText("Value");
-			break;
-		case telemetry_unit::memory:
-			axis->axis = new QValueAxis();
-			axis->axis->setTitleText("Memory");
-			axis->alignment = Qt::AlignRight;
-			break;
-		case telemetry_unit::fps:
-			axis->axis = new QValueAxis();
-			axis->axis->setTitleText("FPS");
-			axis->alignment = Qt::AlignRight;
-			break;
-		case telemetry_unit::time:
-			axis->axis = new QValueAxis();
-			axis->axis->setTitleText("Time");
-			break;
+	if(unit == telemetry_unit::memory || unit == telemetry_unit::fps)
+		axis->alignment = Qt::AlignRight;
 
-		default:
-			axis->axis = nullptr;
-	}
+	axis->line_axis = build_axis(unit);
+	axis->box_axis = build_axis(unit);
 
 	m_axes.append(axis);
 }
@@ -222,7 +303,7 @@ chart_widget::chart_axis *chart_widget::get_chart_axis_for_field(telemetry_provi
 	return fallback;
 }
 
-chart_widget::chart_data &chart_widget::get_data_for_field(telemetry_provider_field *field)
+chart_widget::chart_data &chart_widget::get_or_create_data_for_field(telemetry_provider_field *field)
 {
 	auto iterator = std::find_if(m_data.begin(), m_data.end(), [&](const chart_data &data) {
 		return (field == data.field);
@@ -231,8 +312,34 @@ chart_widget::chart_data &chart_widget::get_data_for_field(telemetry_provider_fi
 	if(iterator != m_data.end())
 		return *iterator;
 
+	auto [ min_value, max_value ] = field->get_min_max_data_point_in_range(m_start, m_end);
+
 	chart_data &data = m_data.emplace_back();
 	data.field = field;
+	data.axis = get_chart_axis_for_field(field);
+	data.min_value = min_value;
+	data.max_value = max_value;
+
+	data.line_series = create_line_series(data.field);
+
+	data.box_set = new QBoxSet();
+	data.box_set->setLabel(field->title);
+	data.box_set->setBrush(field->color);
+
+	data.update_box_set(m_start, m_end);
+
+	data.box_series = new QBoxPlotSeries();
+	data.box_series->setName(field->title);
+	data.box_series->append(data.box_set);
+
+	m_line_chart->addSeries(data.line_series);
+	m_boxplot_chart->addSeries(data.box_series);
+
+	data.line_series->attachAxis(m_timeline_axis);
+	data.line_series->attachAxis(data.axis->line_axis);
+
+	data.box_series->attachAxis(m_category_axis);
+	data.box_series->attachAxis(data.axis->box_axis);
 
 	return data;
 }
@@ -256,10 +363,11 @@ double chart_widget::scale_memory(double bytes) const
 	return bytes;
 }
 
-
-
 void chart_widget::rescale_axes()
 {
+	uint32_t enabled_fields = 0;
+
+	// Vertical axes
 	for(auto &axis : m_axes)
 	{
 		axis->minimum = std::numeric_limits<double>::max();
@@ -270,8 +378,10 @@ void chart_widget::rescale_axes()
 
 	for(auto &data : m_data)
 	{
-		if(!data.line_series || data.is_hidden)
+		if(data.is_hidden)
 			continue;
+
+		enabled_fields ++;
 
 		data.axis->visible = true;
 
@@ -289,8 +399,10 @@ void chart_widget::rescale_axes()
 
 	for(auto &axis : m_axes)
 	{
-		if(axis->axis->isVisible() != axis->visible)
-			axis->axis->setVisible(axis->visible);
+		if(axis->line_axis->isVisible() != axis->visible)
+			axis->line_axis->setVisible(axis->visible);
+		if(axis->box_axis->isVisible() != axis->visible)
+			axis->box_axis->setVisible(axis->visible);
 
 		if(!axis->visible)
 			continue;
@@ -325,14 +437,36 @@ void chart_widget::rescale_axes()
 
 		min_value = std::min(round_down_to_nearest(min_value, 1.0), 0.0);
 
-		axis->axis->setRange(min_value, max_value);
+		axis->line_axis->setRange(min_value, max_value);
+		axis->box_axis->setRange(min_value, max_value);
+	}
+
+	// Horizontal
+	const uint32_t interval = abs(m_end - m_start);
+
+	if(interval >= 5 * 60)
+		m_timeline_axis->setTickInterval(60);
+	else if(interval >= 50)
+		m_timeline_axis->setTickInterval(10);
+	else
+		m_timeline_axis->setTickInterval(1);
+
+	m_timeline_axis->setRange(m_start, m_end);
+
+	QLegend *legend = m_boxplot_chart->legend();
+
+	for(auto &data : m_data)
+	{
+		if(!data.is_hidden)
+		{
+			auto markers = legend->markers(data.box_series);
+			markers.first()->setBrush(data.field->color);
+		}
 	}
 }
 
-void chart_widget::build_line_series(chart_data &data) const
+QLineSeries *chart_widget::create_line_series(telemetry_provider_field *field) const
 {
-	const auto &field = data.field;
-
 	QLineSeries *series = new QLineSeries();
 	series->setColor(field->color);
 	series->setName(field->title);
@@ -377,13 +511,6 @@ void chart_widget::build_line_series(chart_data &data) const
 		last_value = value;
 	}
 
-	chart()->addSeries(series);
-
-	series->attachAxis(m_x_axis);
-	series->attachAxis(data.axis->axis);
-
-	data.line_series = series;
-
-	if(data.is_hidden)
-		series->hide();
+	return series;
 }
+

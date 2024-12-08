@@ -13,11 +13,12 @@
 #include "document_window.h"
 
 #include "test_runner_dialog.h"
-#include "model/performance_data.h"
 #include "model/recently_opened.h"
 #include "model/telemetry_reader.h"
 #include "utilities/xplane_installations.h"
 #include "utilities/settings.h"
+#include "utilities/performance_calculator.h"
+#include "utilities/providers.h"
 
 static document_window *s_first_document = nullptr;
 
@@ -54,6 +55,7 @@ document_window::document_window() :
 	connect(m_mode_selector, qOverload<int>(&QComboBox::currentIndexChanged), this, &document_window::mode_changed);
 	connect(m_memory_scaling, qOverload<int>(&QComboBox::currentIndexChanged), this, &document_window::memory_scale_changed);
 
+	m_mode_selector->setCurrentIndex((int)m_chart_view->get_type());
 	m_memory_scaling->setCurrentIndex((int)m_chart_view->get_memory_scaling());
 
 	m_splitter->setStretchFactor(0, 3);
@@ -242,8 +244,6 @@ void document_window::set_time_range(int32_t start, int32_t end)
 {
 	m_chart_view->set_range(start, end);
 
-	performance_data perf(m_telemetry, start, end);
-
 	QChart *chart = new QChart();
 
 	struct perf_set
@@ -260,32 +260,44 @@ void document_window::set_time_range(int32_t start, int32_t end)
 		perf_set{ "P99", 0.99f }
 	};
 
-	auto build_bar_set = [&](time_domain domain) -> QBarSet * {
+	auto build_bar_set = [&](provider_timing::field_id field_id) -> QBarSet * {
 
-		auto field = perf.field_for_domain(domain);
-
-		if(!field)
-			return nullptr;
-
-		QBarSet *set = new QBarSet(field->title);
-		set->setColor(field->color);
-
-		for(auto &perf_set : perf_series)
+		try
 		{
-			if(perf_set.percentile <= 0.0f)
-				set->append(perf.calculate_average(domain));
-			else
-				set->append(perf.calculate_percentile(perf_set.percentile, domain));
-		}
+			auto &field = provider_timing::get_field(m_telemetry, field_id);
+			performance_calculator perf(field, start, end);
 
-		return set;
+			QBarSet *set = new QBarSet(field.title);
+			set->setColor(field.color);
+
+			for(auto &perf_set : perf_series)
+			{
+				if(perf_set.percentile <= 0.0f)
+					set->append(perf.calculate_average() * 1000.0);
+				else
+					set->append(perf.calculate_percentile(perf_set.percentile) * 1000.0);
+			}
+
+			return set;
+		}
+		catch(...)
+		{
+			return nullptr;
+		}
 	};
 
-	if(perf.contains_data())
+	QList<QBarSet *> bar_sets;
+
+	if(QBarSet *cpu = build_bar_set(provider_timing::cpu))
+		bar_sets.append(cpu);
+	if(QBarSet *gpu = build_bar_set(provider_timing::gpu))
+		bar_sets.append(gpu);
+
+
+	if(!bar_sets.isEmpty())
 	{
 		QHorizontalBarSeries *series = new QHorizontalBarSeries();
-		series->append(build_bar_set(time_domain::cpu));
-		series->append(build_bar_set(time_domain::gpu));
+		series->append(bar_sets);
 		series->setLabelsVisible(true);
 		series->setLabelsPosition(QAbstractBarSeries::LabelsInsideEnd);
 		series->setLabelsPrecision(3);
@@ -324,16 +336,6 @@ void document_window::load_file(const QString &path)
 
 	recently_opened opened;
 	opened.add_entry(path);
-
-	if(m_event_ranges.size() > 1)
-	{
-		m_event_picker->setCurrentIndex(1);
-		range_changed(1);
-	}
-	else
-	{
-		set_time_range(m_telemetry.start_time, m_telemetry.end_time);
-	}
 }
 
 void document_window::new_file()
@@ -461,7 +463,7 @@ void document_window::event_range_changed(int index)
 
 void document_window::mode_changed(int index)
 {
-	m_chart_view->set_type(index == 0 ? chart_type::line : chart_type::boxplot);
+	m_chart_view->set_type((chart_type)index);
 }
 
 void document_window::memory_scale_changed(int index)
@@ -559,6 +561,13 @@ void document_window::update_telemetry()
 		m_event_ranges.push_back(everything);
 	}
 
+	m_start_edit->set_range(m_telemetry.start_time, m_telemetry.end_time);
+	m_start_edit->set_value(m_telemetry.start_time);
+
+	m_end_edit->set_range(m_telemetry.start_time, m_telemetry.end_time);
+	m_end_edit->set_value(m_telemetry.end_time);
+
+
 	// Add all the telmetry providers
 	{
 		generic_tree_item *root_item = new generic_tree_item({"Provider", "Title"});
@@ -572,17 +581,17 @@ void document_window::update_telemetry()
 			{
 				generic_tree_item *child = root_item->add_child({provider.title});
 
-				if(provider.identifier == "com.laminarresearch.test_main_class")
+				if(provider.identifier == provider_timing::identifier)
 				{
 					expanded.push_front(index);
 
 					try
 					{
-						auto &cpu = provider.find_field(0);
+						auto &cpu = provider.find_field(provider_timing::cpu);
 						if(!cpu.data_points.empty())
 							cpu.enabled = true;
 
-						auto &gpu = provider.find_field(0);
+						auto &gpu = provider.find_field(provider_timing::gpu);
 						if(!gpu.data_points.empty())
 							gpu.enabled = true;
 					}
@@ -590,10 +599,10 @@ void document_window::update_telemetry()
 					{}
 				}
 
-				if(provider.identifier == "com.laminarresarch.sim_apup")
+				if(provider.identifier == provider_sim_apup::identifier)
 				{
-					auto &do_world_events = provider.find_field(0);
-					auto &aircraft_events = provider.find_field(2);
+					auto &do_world_events = provider.find_field(provider_sim_apup::do_world);
+					auto &aircraft_events = provider.find_field(provider_sim_apup::loaded_aircraft);
 
 					bool is_doing_world = false;
 					double start_timestamp = 0.0;
@@ -667,6 +676,18 @@ void document_window::update_telemetry()
 		m_providers_view->setModel(model);
 		m_providers_view->update();
 
+		for(auto &event : m_event_ranges)
+			m_event_picker->addItem(event.name);
+
+		if(m_event_ranges.size() > 1)
+		{
+			m_event_picker->setCurrentIndex(1);
+			range_changed(1);
+		}
+		else
+			set_time_range(m_telemetry.start_time, m_telemetry.end_time);
+
+
 		for(auto index : expanded)
 		{
 			m_providers_view->expand(model->index(index, 0, QModelIndex()));
@@ -674,9 +695,7 @@ void document_window::update_telemetry()
 			for(auto &field : m_telemetry.providers[index].fields)
 			{
 				if(field.enabled)
-				{
 					m_chart_view->add_data(&field);
-				}
 			}
 		}
 
@@ -713,13 +732,4 @@ void document_window::update_telemetry()
 
 		m_timeline_widget->setTimelineSpans(m_telemetry.event_spans);
 	}
-
-	for(auto &event : m_event_ranges)
-		m_event_picker->addItem(event.name);
-
-	m_start_edit->set_range(m_telemetry.start_time, m_telemetry.end_time);
-	m_start_edit->set_value(m_telemetry.start_time);
-
-	m_end_edit->set_range(m_telemetry.start_time, m_telemetry.end_time);
-	m_end_edit->set_value(m_telemetry.end_time);
 }

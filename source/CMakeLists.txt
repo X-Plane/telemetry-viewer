@@ -29,8 +29,6 @@ set(SOURCES
 		model/generic_tree_item.h
 		model/generic_tree_model.cpp
 		model/generic_tree_model.h
-		model/performance_data.cpp
-		model/performance_data.h
 		model/recently_opened.cpp
 		model/recently_opened.h
 		model/telemetry_container.cpp
@@ -40,6 +38,9 @@ set(SOURCES
 		utilities/color.h
 		utilities/data_decimator.cpp
 		utilities/data_decimator.h
+		utilities/performance_calculator.cpp
+		utilities/performance_calculator.h
+		utilities/providers.h
 		utilities/settings.cpp
 		utilities/settings.h
 		utilities/xplane_installations.cpp
