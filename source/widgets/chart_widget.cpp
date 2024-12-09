@@ -36,7 +36,7 @@ void chart_widget::chart_data::show()
 	is_hidden = false;
 }
 
-void chart_widget::chart_data::update_box_set(int32_t start, int32_t end) const
+void chart_widget::chart_data::update_box_set(int32_t start, int32_t end, double scale_factor) const
 {
 	performance_calculator calc(*field, start, end);
 
@@ -53,11 +53,11 @@ void chart_widget::chart_data::update_box_set(int32_t start, int32_t end) const
 		return;
 	}
 
-	box_set->setValue(QBoxSet::LowerExtreme, calc.get_minimum());
-	box_set->setValue(QBoxSet::UpperExtreme, calc.get_maximum());
-	box_set->setValue(QBoxSet::Median, calc.get_median_value(0, count));
-	box_set->setValue(QBoxSet::LowerQuartile, calc.get_median_value(0, count / 2));
-	box_set->setValue(QBoxSet::UpperQuartile, calc.get_median_value(count / 2 + (count % 2), count));
+	box_set->setValue(QBoxSet::LowerExtreme, calc.get_minimum() * scale_factor);
+	box_set->setValue(QBoxSet::UpperExtreme, calc.get_maximum() * scale_factor);
+	box_set->setValue(QBoxSet::Median, calc.get_median_value(0, count) * scale_factor);
+	box_set->setValue(QBoxSet::LowerQuartile, calc.get_median_value(0, count / 2) * scale_factor);
+	box_set->setValue(QBoxSet::UpperQuartile, calc.get_median_value(count / 2 + (count % 2), count) * scale_factor);
 }
 
 
@@ -128,7 +128,12 @@ void chart_widget::set_range(int32_t start, int32_t end)
 		data.min_value = min_value;
 		data.max_value = max_value;
 
-		data.update_box_set(m_start, m_end);
+		double scale_factor = 1.0f;
+
+		if(data.field->unit == telemetry_unit::memory)
+			scale_factor = scale_memory(scale_factor);
+
+		data.update_box_set(m_start, m_end, scale_factor);
 	}
 
 	rescale_axes();
@@ -326,7 +331,12 @@ chart_widget::chart_data &chart_widget::get_or_create_data_for_field(telemetry_p
 	data.box_set->setLabel(field->title);
 	data.box_set->setBrush(field->color);
 
-	data.update_box_set(m_start, m_end);
+	double scale_factor = 1.0f;
+
+	if(data.field->unit == telemetry_unit::memory)
+		scale_factor = scale_memory(scale_factor);
+
+	data.update_box_set(m_start, m_end, scale_factor);
 
 	data.box_series = new QBoxPlotSeries();
 	data.box_series->setName(field->title);
@@ -427,6 +437,7 @@ void chart_widget::rescale_axes()
 			case telemetry_unit::memory:
 				min_value = scale_memory(axis->minimum);
 				max_value = scale_memory(axis->maximum);
+				max_value = 1 << uint32_t(ceil(log2(max_value)));
 				break;
 
 			default:

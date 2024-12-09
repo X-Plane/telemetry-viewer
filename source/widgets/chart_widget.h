@@ -72,7 +72,7 @@ private:
 		void detach() const;
 		void hide();
 		void show();
-		void update_box_set(int32_t start, int32_t end) const;
+		void update_box_set(int32_t start, int32_t end, double scale_factor) const;
 
 		telemetry_provider_field *field;
 		chart_axis *axis = nullptr;
