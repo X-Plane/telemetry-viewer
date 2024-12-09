@@ -54,7 +54,7 @@ double performance_calculator::calculate_percentile(float percentile) const
 double performance_calculator::get_median_value(size_t start, size_t end) const
 {
 	Q_ASSERT(start < m_samples.size());
-	Q_ASSERT(end < m_samples.size());
+	Q_ASSERT(end <= m_samples.size());
 
 	const size_t count = end - start;
 	const size_t half = count / 2;
