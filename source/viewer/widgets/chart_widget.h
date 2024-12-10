@@ -7,10 +7,7 @@
 
 #include <QtCharts/QtCharts>
 #include <QChartView>
-#include "model/telemetry_container.h"
-
-enum class telemetry_unit : uint8_t;
-struct telemetry_provider_field;
+#include <telemetry/provider.h>
 
 enum class chart_type
 {
@@ -33,11 +30,11 @@ public:
 	chart_widget(QWidget *parent = nullptr);
 	~chart_widget() override;
 
-	void add_data(telemetry_provider_field *field);
-	void remove_data(telemetry_provider_field *field);
+	void add_data(telemetry_field *field, QColor color);
+	void remove_data(telemetry_field *field);
 
-	void show_data(telemetry_provider_field *field);
-	void hide_data(telemetry_provider_field *field);
+	void show_data(telemetry_field *field);
+	void hide_data(telemetry_field *field);
 
 	void clear();
 
@@ -74,11 +71,12 @@ private:
 		void show();
 		void update_box_set(int32_t start, int32_t end, double scale_factor) const;
 
-		telemetry_provider_field *field;
+		telemetry_field *field;
 		chart_axis *axis = nullptr;
 
 		bool is_hidden = false;
 
+		QColor color;
 		QLineSeries *line_series = nullptr;
 		QBoxPlotSeries *box_series = nullptr;
 		QBoxSet *box_set = nullptr;
@@ -91,10 +89,10 @@ private:
 
 	double scale_memory(double bytes) const;
 
-	chart_axis *get_chart_axis_for_field(telemetry_provider_field *field) const;
-	chart_data &get_or_create_data_for_field(telemetry_provider_field *field);
+	chart_axis *get_chart_axis_for_field(telemetry_field *field) const;
+	chart_data &get_data_for_field(telemetry_field *field);
 
-	QLineSeries *create_line_series(telemetry_provider_field *field) const;
+	QLineSeries *create_line_series(telemetry_field *field) const;
 
 	void rescale_axes();
 

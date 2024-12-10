@@ -198,7 +198,23 @@
                 </sizepolicy>
                </property>
               </widget>
-              <widget class="QTreeView" name="m_timeline_tree"/>
+              <widget class="QTreeWidget" name="m_timeline_tree">
+               <column>
+                <property name="text">
+                 <string>Event</string>
+                </property>
+               </column>
+               <column>
+                <property name="text">
+                 <string>Duration</string>
+                </property>
+               </column>
+               <column>
+                <property name="text">
+                 <string>Path</string>
+                </property>
+               </column>
+              </widget>
              </widget>
             </item>
            </layout>
@@ -358,14 +374,35 @@
        <property name="childrenCollapsible">
         <bool>false</bool>
        </property>
-       <widget class="QTreeView" name="m_overview_view"/>
-       <widget class="QTreeView" name="m_providers_view">
-        <property name="minimumSize">
-         <size>
-          <width>0</width>
-          <height>0</height>
-         </size>
-        </property>
+       <widget class="QTreeWidget" name="m_overview_view">
+        <attribute name="headerDefaultSectionSize">
+         <number>200</number>
+        </attribute>
+        <column>
+         <property name="text">
+          <string notr="true">Statistic</string>
+         </property>
+        </column>
+        <column>
+         <property name="text">
+          <string>Value</string>
+         </property>
+        </column>
+       </widget>
+       <widget class="QTreeWidget" name="m_providers_view">
+        <attribute name="headerDefaultSectionSize">
+         <number>200</number>
+        </attribute>
+        <column>
+         <property name="text">
+          <string notr="true">Provider</string>
+         </property>
+        </column>
+        <column>
+         <property name="text">
+          <string>Name</string>
+         </property>
+        </column>
        </widget>
        <widget class="QChartView" name="m_statistics_view">
         <property name="minimumSize">

@@ -3,8 +3,8 @@
 //
 
 #include <QLegendMarker>
+#include <telemetry/container.h>
 #include "chart_widget.h"
-#include "model/telemetry_container.h"
 #include "utilities/color.h"
 #include "utilities/performance_calculator.h"
 
@@ -123,14 +123,14 @@ void chart_widget::set_range(int32_t start, int32_t end)
 
 	for(auto &data : m_data)
 	{
-		auto [ min_value, max_value ] = data.field->get_min_max_data_point_in_range(m_start, m_end);
+		auto [ min_value, max_value ] = data.field->get_extreme_data_point_in_range(m_start, m_end);
 
 		data.min_value = min_value;
 		data.max_value = max_value;
 
 		double scale_factor = 1.0f;
 
-		if(data.field->unit == telemetry_unit::memory)
+		if(data.field->get_unit() == telemetry_unit::memory)
 			scale_factor = scale_memory(scale_factor);
 
 		data.update_box_set(m_start, m_end, scale_factor);
@@ -166,34 +166,75 @@ void chart_widget::set_memory_scaling(memory_scaling scaling)
 
 	m_memory_scaling = scaling;
 
-	QVector<telemetry_provider_field *> fields;
+	QVector<QPair<telemetry_field *, QColor>> fields;
 
 	for(auto &data : m_data)
 	{
 		if(data.axis->unit != telemetry_unit::memory)
 			continue;
 
-		fields.push_back(data.field);
+		fields.push_back(qMakePair(data.field, data.color));
 		remove_data(data.field);
 	}
 
-	for(auto &field : fields)
-		add_data(field);
+	for(auto &[ field, color ] : fields)
+		add_data(field, color);
 }
 
 
 
-
-void chart_widget::add_data(telemetry_provider_field *field)
+void chart_widget::add_data(telemetry_field *field, QColor color)
 {
-	chart_data &data = get_or_create_data_for_field(field);
+	auto iterator = std::find_if(m_data.begin(), m_data.end(), [&](const chart_data &data) {
+		return (field == data.field);
+	});
+
+	if(iterator != m_data.end())
+		return;
+
+
+	auto [ min_value, max_value ] = field->get_extreme_data_point_in_range(m_start, m_end);
+
+	chart_data &data = m_data.emplace_back();
+	data.field = field;
+	data.axis = get_chart_axis_for_field(field);
+	data.min_value = min_value;
+	data.max_value = max_value;
+	data.color = color;
+
+	data.line_series = create_line_series(data.field);
+	data.line_series->setColor(data.color);
+
+	data.box_set = new QBoxSet();
+	data.box_set->setLabel(QString::fromStdString(field->get_title()));
+	data.box_set->setBrush(data.color);
+
+	double scale_factor = 1.0f;
+
+	if(data.field->get_unit() == telemetry_unit::memory)
+		scale_factor = scale_memory(scale_factor);
+
+	data.update_box_set(m_start, m_end, scale_factor);
+
+	data.box_series = new QBoxPlotSeries();
+	data.box_series->setName(QString::fromStdString(field->get_title()));
+	data.box_series->append(data.box_set);
+
+	m_line_chart->addSeries(data.line_series);
+	m_boxplot_chart->addSeries(data.box_series);
+
+	data.line_series->attachAxis(m_timeline_axis);
+	data.line_series->attachAxis(data.axis->line_axis);
+
+	data.box_series->attachAxis(m_category_axis);
+	data.box_series->attachAxis(data.axis->box_axis);
 
 	if(data.is_hidden)
 		data.show();
 
 	rescale_axes();
 }
-void chart_widget::remove_data(telemetry_provider_field *field)
+void chart_widget::remove_data(telemetry_field *field)
 {
 	auto iterator = std::find_if(m_data.begin(), m_data.end(), [&](const chart_data &data) {
 		return (field == data.field);
@@ -212,13 +253,19 @@ void chart_widget::remove_data(telemetry_provider_field *field)
 	}
 }
 
-void chart_widget::show_data(telemetry_provider_field *field)
+void chart_widget::show_data(telemetry_field *field)
 {
-	add_data(field);
+	chart_data &data = get_data_for_field(field);
+
+	if(data.is_hidden)
+	{
+		data.show();
+		rescale_axes();
+	}
 }
-void chart_widget::hide_data(telemetry_provider_field *field)
+void chart_widget::hide_data(telemetry_field *field)
 {
-	chart_data &data = get_or_create_data_for_field(field);
+	chart_data &data = get_data_for_field(field);
 
 	if(!data.is_hidden)
 	{
@@ -288,9 +335,9 @@ void chart_widget::build_chart_axis(telemetry_unit unit)
 	m_axes.append(axis);
 }
 
-chart_widget::chart_axis *chart_widget::get_chart_axis_for_field(telemetry_provider_field *field) const
+chart_widget::chart_axis *chart_widget::get_chart_axis_for_field(telemetry_field *field) const
 {
-	telemetry_unit unit = field->unit;
+	telemetry_unit unit = field->get_unit();
 	if(unit == telemetry_unit::duration)
 		unit = telemetry_unit::time;
 
@@ -308,50 +355,15 @@ chart_widget::chart_axis *chart_widget::get_chart_axis_for_field(telemetry_provi
 	return fallback;
 }
 
-chart_widget::chart_data &chart_widget::get_or_create_data_for_field(telemetry_provider_field *field)
+chart_widget::chart_data &chart_widget::get_data_for_field(telemetry_field *field)
 {
 	auto iterator = std::find_if(m_data.begin(), m_data.end(), [&](const chart_data &data) {
 		return (field == data.field);
 	});
 
-	if(iterator != m_data.end())
-		return *iterator;
+	Q_ASSERT(iterator != m_data.end());
 
-	auto [ min_value, max_value ] = field->get_min_max_data_point_in_range(m_start, m_end);
-
-	chart_data &data = m_data.emplace_back();
-	data.field = field;
-	data.axis = get_chart_axis_for_field(field);
-	data.min_value = min_value;
-	data.max_value = max_value;
-
-	data.line_series = create_line_series(data.field);
-
-	data.box_set = new QBoxSet();
-	data.box_set->setLabel(field->title);
-	data.box_set->setBrush(field->color);
-
-	double scale_factor = 1.0f;
-
-	if(data.field->unit == telemetry_unit::memory)
-		scale_factor = scale_memory(scale_factor);
-
-	data.update_box_set(m_start, m_end, scale_factor);
-
-	data.box_series = new QBoxPlotSeries();
-	data.box_series->setName(field->title);
-	data.box_series->append(data.box_set);
-
-	m_line_chart->addSeries(data.line_series);
-	m_boxplot_chart->addSeries(data.box_series);
-
-	data.line_series->attachAxis(m_timeline_axis);
-	data.line_series->attachAxis(data.axis->line_axis);
-
-	data.box_series->attachAxis(m_category_axis);
-	data.box_series->attachAxis(data.axis->box_axis);
-
-	return data;
+	return *iterator;
 }
 
 
@@ -395,8 +407,8 @@ void chart_widget::rescale_axes()
 
 		data.axis->visible = true;
 
-		data.axis->minimum = std::min(data.axis->minimum, data.min_value.value.toDouble());
-		data.axis->maximum = std::max(data.axis->maximum, data.max_value.value.toDouble());
+		data.axis->minimum = std::min(data.axis->minimum, data.min_value.value.get<double>());
+		data.axis->maximum = std::max(data.axis->maximum, data.max_value.value.get<double>());
 	}
 
 	auto round_up_to_nearest = [](double value, double N) {
@@ -471,16 +483,15 @@ void chart_widget::rescale_axes()
 		if(!data.is_hidden)
 		{
 			auto markers = legend->markers(data.box_series);
-			markers.first()->setBrush(data.field->color);
+			markers.first()->setBrush(data.color);
 		}
 	}
 }
 
-QLineSeries *chart_widget::create_line_series(telemetry_provider_field *field) const
+QLineSeries *chart_widget::create_line_series(telemetry_field *field) const
 {
 	QLineSeries *series = new QLineSeries();
-	series->setColor(field->color);
-	series->setName(field->title);
+	series->setName(QString::fromStdString(field->get_title()));
 
 	QPen pen = series->pen();
 	pen.setWidth(2);
@@ -489,7 +500,7 @@ QLineSeries *chart_widget::create_line_series(telemetry_provider_field *field) c
 	qreal last_time = -1000.0f;
 	qreal last_value = 0.0f;
 
-	for(auto &data : field->data_points)
+	for(auto &data : field->get_data_points())
 	{
 		// If there is more than a second of time between data changes, repeat the last point again but at the current time
 		// this will prevent the graph interpolating between the last and new value, when the telemetry system assumes values are sticky until they change
@@ -498,21 +509,20 @@ QLineSeries *chart_widget::create_line_series(telemetry_provider_field *field) c
 
 		qreal value;
 
-		switch(field->unit)
+		switch(field->get_unit())
 		{
 			case telemetry_unit::duration:
 			{
-				QPointF point = data.value.toPointF();
-				value = point.y() - point.x();
+				value = data.value.vec2[1] - data.value.vec2[0];
 				break;
 			}
 
 			case telemetry_unit::memory:
-				value = scale_memory(data.value.toDouble());
+				value = scale_memory(data.value.get<double>());
 				break;
 
 			default:
-				value = data.value.toFloat();
+				value = data.value.get<double>();
 				break;
 		}
 

@@ -5,14 +5,13 @@
 #include <QGraphicsItemGroup>
 #include <QVector>
 #include <QKeyEvent>
-
-#include "../model/telemetry_container.h"
+#include <telemetry/event.h>
 
 class timeline_span_item : public QObject, public QGraphicsItem
 {
 Q_OBJECT
 public:
-	timeline_span_item(const QPalette& p, const telemetry_event_span& span, QGraphicsItem* parent);
+	timeline_span_item(const QPalette& p, const telemetry_event& span, QGraphicsItem* parent);
 
 	void collapse();
 	void expand();
@@ -28,7 +27,7 @@ signals:
 protected:
 	void reflow();
 
-	telemetry_event_span m_span;
+	telemetry_event m_span;
 	std::vector<timeline_span_item*> m_span_groups;
 };
 
@@ -41,7 +40,7 @@ class timeline_widget : public QGraphicsView
 public:
 	timeline_widget(QWidget *parent = nullptr);
 
-	void setTimelineSpans(const QVector<telemetry_event_span>& spans);
+	void setTimelineSpans(const std::vector<telemetry_event>& spans);
 
 	void keyPressEvent(QKeyEvent*) override;
 	void keyReleaseEvent(QKeyEvent*) override;

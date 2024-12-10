@@ -6,7 +6,6 @@
 #define TELEMETRY_STUDIO_COLOR_H
 
 #include <QColor>
-#include <QHash>
 #include <random>
 
 // This is the hash function of Qt5. It got changed in Qt 6, but I don't like the colours it generates

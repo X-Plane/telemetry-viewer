@@ -5,10 +5,9 @@
 #ifndef TELEMETRY_STUDIO_DATA_DECIMATOR_H
 #define TELEMETRY_STUDIO_DATA_DECIMATOR_H
 
-#include <QVector>
+#include <vector>
+#include <telemetry/data.h>
 
-struct telemetry_data_point;
-
-QVector<telemetry_data_point> decimate_data(const QVector<telemetry_data_point> &input, uint32_t threshold);
+std::vector<telemetry_data_point> decimate_data(const std::vector<telemetry_data_point> &input, uint32_t threshold);
 
 #endif //TELEMETRY_STUDIO_DATA_DECIMATOR_H

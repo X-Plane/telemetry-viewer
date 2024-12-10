@@ -2,19 +2,16 @@
 // Created by Sidney on 13-Jun-18.
 //
 
-#include <QApplication>
-#include <QFileDialog>
-#include <QProcess>
 #include <QString>
-#include <QTextStream>
-#include <QTimer>
 #include <thread>
+#include <telemetry/parser.h>
 
 #include "document_window.h"
 
 #include "test_runner_dialog.h"
 #include "model/recently_opened.h"
-#include "model/telemetry_reader.h"
+#include "utilities/color.h"
+#include "utilities/data_decimator.h"
 #include "utilities/xplane_installations.h"
 #include "utilities/settings.h"
 #include "utilities/performance_calculator.h"
@@ -51,9 +48,22 @@ document_window::document_window() :
 
 	connect(m_start_edit, &time_picker_widget::value_changed, this, &document_window::range_changed);
 	connect(m_end_edit, &time_picker_widget::value_changed, this, &document_window::range_changed);
-	connect(m_event_picker, qOverload<int>(&QComboBox::currentIndexChanged), this, &document_window::event_range_changed);
-	connect(m_mode_selector, qOverload<int>(&QComboBox::currentIndexChanged), this, &document_window::mode_changed);
-	connect(m_memory_scaling, qOverload<int>(&QComboBox::currentIndexChanged), this, &document_window::memory_scale_changed);
+	connect(m_event_picker, &QComboBox::currentIndexChanged, this, &document_window::event_range_changed);
+	connect(m_mode_selector, &QComboBox::currentIndexChanged, [this](int index) {
+		m_chart_view->set_type((chart_type)index);
+	});
+	connect(m_memory_scaling, &QComboBox::currentIndexChanged, [this](int index) {
+		m_chart_view->set_memory_scaling((memory_scaling)index);
+	});
+
+	connect(m_providers_view, &QTreeWidget::itemChanged, [this](QTreeWidgetItem *item) {
+
+		if(item->checkState(0) == Qt::Checked)
+			m_chart_view->add_data(item->data(0, Qt::UserRole).value<telemetry_field *>(), item->background(0).color());
+		else
+			m_chart_view->remove_data(item->data(0, Qt::UserRole).value<telemetry_field *>());
+
+	});
 
 	m_mode_selector->setCurrentIndex((int)m_chart_view->get_type());
 	m_memory_scaling->setCurrentIndex((int)m_chart_view->get_memory_scaling());
@@ -86,7 +96,7 @@ document_window::document_window() :
 			m_installation_selector->setCurrentIndex(m_installation_selector->count() - 1);
 	}
 
-	connect(m_installation_selector, qOverload<int>(&QComboBox::currentIndexChanged), [this](int index) {
+	connect(m_installation_selector, &QComboBox::currentIndexChanged, [this](int index) {
 
 		QSettings settings = open_settings();
 		settings.setValue("installation", m_installations[index].path);
@@ -168,6 +178,11 @@ document_window::~document_window()
 			}
 		}
 	}
+}
+
+QColor document_window::generate_color_for_title(const QString &title) const
+{
+	return generate_color(title, 0.9f, 0.4f);
 }
 
 void document_window::closeEvent(QCloseEvent *event)
@@ -264,11 +279,11 @@ void document_window::set_time_range(int32_t start, int32_t end)
 
 		try
 		{
-			auto &field = provider_timing::get_field(m_telemetry, field_id);
+			auto &field = provider_timing::get_field(m_document.container, field_id);
 			performance_calculator perf(field, start, end);
 
-			QBarSet *set = new QBarSet(field.title);
-			set->setColor(field.color);
+			QBarSet *set = new QBarSet(QString::fromStdString(field.get_title()));
+			set->setColor(generate_color_for_title(set->label()));
 
 			for(auto &perf_set : perf_series)
 			{
@@ -325,10 +340,64 @@ void document_window::set_time_range(int32_t start, int32_t end)
 	m_statistics_view->setChart(chart);
 }
 
+telemetry_file read_telemetry_data(const QString &path)
+{
+	QFile file(path);
+
+	if(!file.open(QIODevice::ReadOnly))
+		return {};
+
+	const size_t length = file.bytesAvailable();
+
+	telemetry_file result;
+	result.data.resize(length);
+
+	file.read((char *)result.data.data(), length);
+	file.close();
+
+
+	telemetry_parser_options options;
+	options.data_point_processor = [](const telemetry_container &container, const telemetry_provider &provider, const telemetry_field &field, const std::vector<telemetry_data_point> &data_points) {
+
+		std::vector<telemetry_data_point> result = decimate_data(data_points, 1000);
+
+		// Expand the first and last point to the very end of the telemetry range
+		if(!result.empty())
+		{
+			auto first = result.front();
+			if(first.timestamp > container.get_start_time())
+			{
+				first.timestamp = container.get_start_time();
+				result.insert(result.begin(), first);
+			}
+
+			auto last = result.back();
+			if(last.timestamp < container.get_end_time())
+			{
+				last.timestamp = container.get_end_time();
+				result.push_back(last);
+			}
+		}
+
+		return result;
+
+	};
+
+	try
+	{
+		result.container = parse_telemetry_data(result.data.data(), result.data.size(), options);
+		return result;
+	}
+	catch(std::exception &e)
+	{
+		qDebug() << "Caught exception while parsing file " << e.what();
+		return {};
+	}
+}
+
 void document_window::load_file(const QString &path)
 {
-	m_telemetry = read_telemetry_data(path);
-
+	m_document = read_telemetry_data(path);
 	m_chart_view->clear();
 
 	update_telemetry();
@@ -363,7 +432,7 @@ void document_window::open_file()
 
 void document_window::save_file()
 {
-	if(m_telemetry.raw_data.isEmpty())
+	if(m_document.data.empty())
 		return;
 
 	QString base_path = m_base_dir;
@@ -379,12 +448,13 @@ void document_window::save_file()
 
 		if(file.open(QIODevice::WriteOnly))
 		{
-			file.write(m_telemetry.raw_data);
+			file.write((const char *)m_document.data.data(), m_document.data.size());
 
 			QFileInfo info(file);
 			touch_telemetry_file(info);
 		}
 	}
+
 }
 
 void document_window::touch_telemetry_file(const QFileInfo &file_info)
@@ -445,11 +515,10 @@ void document_window::run_fps_test()
 }
 
 
-void document_window::range_changed(int32_t value)
+void document_window::range_changed()
 {
 	set_time_range(m_start_edit->get_value(), m_end_edit->get_value());
 }
-
 void document_window::event_range_changed(int index)
 {
 	if(index == -1)
@@ -461,275 +530,230 @@ void document_window::event_range_changed(int index)
 	m_end_edit->set_value(m_event_ranges[index].end);
 }
 
-void document_window::mode_changed(int index)
-{
-	m_chart_view->set_type((chart_type)index);
-}
-
-void document_window::memory_scale_changed(int index)
-{
-	m_chart_view->set_memory_scaling((memory_scaling)index);
-}
-
-bool document_window::tree_model_data_did_change(generic_tree_model *model, generic_tree_item *item, int index, const QVariant &data)
-{
-	if(item->is_boolean(index))
-	{
-		telemetry_provider_field *field = (telemetry_provider_field *)item->get_context();
-
-		if(data.toBool())
-		{
-			if(!field->enabled)
-			{
-				field->enabled = true;
-				m_chart_view->add_data(field);
-			}
-		}
-		else
-		{
-			if(field->enabled)
-			{
-				field->enabled = false;
-				m_chart_view->remove_data(field);
-			}
-		}
-
-		return true;
-	}
-
-	return false;
-}
-
 void document_window::update_telemetry()
 {
+	m_start_edit->set_range(m_document.container.get_start_time(), m_document.container.get_end_time());
+	m_start_edit->set_value(m_document.container.get_start_time());
+
+	m_end_edit->set_range(m_document.container.get_start_time(), m_document.container.get_end_time());
+	m_end_edit->set_value(m_document.container.get_end_time());
+
 	{
-		generic_tree_item *root_item = new generic_tree_item({"Statistic", "Value"});
+		// Figure out our event ranges
+		m_event_picker->clear();
+		m_event_ranges.clear();
 
-		for(auto &stat : m_telemetry.statistics)
 		{
-			generic_tree_item *child = root_item->add_child({ stat.title });
+			event_range everything;
 
-			for(auto &entry : stat.entries)
-			{
-				if(entry.second.metaType().id() == QMetaType::QStringList)
-				{
-					bool is_first = true;
+			everything.start = m_document.container.get_start_time();
+			everything.end = m_document.container.get_end_time();
+			everything.name = "Everything";
 
-					for(auto &string : entry.second.toStringList())
-					{
-						if(is_first)
-						{
-							child->add_child({ entry.first, string });
-							is_first = false;
-						}
-						else
-							child->add_child({ "", string });
-					}
-				}
-				else
-					child->add_child({ entry.first, entry.second });
-			}
+			m_event_ranges.push_back(everything);
+			m_event_picker->addItem(everything.name);
 		}
 
-		generic_tree_model *old_model = (generic_tree_model *)m_overview_view->model();
-		generic_tree_model *model = new generic_tree_model(root_item);
-
-		m_overview_view->setModel(model);
-		m_overview_view->update();
-
-		for(uint32_t i = 0; i < m_telemetry.statistics.size(); i ++)
+		if(m_document.container.has_provider(provider_sim_apup::identifier))
 		{
-			const uint32_t index = m_telemetry.statistics.size() - 1 - i;
-			m_overview_view->expand(model->index(index, 0, QModelIndex()));
-		}
+			auto &do_world_events = provider_sim_apup::get_field(m_document.container, provider_sim_apup::do_world);
+			auto &aircraft_events = provider_sim_apup::get_field(m_document.container, provider_sim_apup::loaded_aircraft);
 
-		delete old_model;
-	}
+			bool is_doing_world = false;
+			double start_timestamp = 0.0;
+			double end_timestamp = 0.0;
 
-	// Clear the old data
-	m_event_picker->clear();
-	m_event_ranges.clear();
+			auto flush_range = [this, &aircraft_events](double start, double end) {
 
-	// Add the default fallback range
-	{
-		event_range everything;
-
-		everything.start = m_telemetry.start_time;
-		everything.end = m_telemetry.end_time;
-		everything.name = "Everything";
-
-		m_event_ranges.push_back(everything);
-	}
-
-	m_start_edit->set_range(m_telemetry.start_time, m_telemetry.end_time);
-	m_start_edit->set_value(m_telemetry.start_time);
-
-	m_end_edit->set_range(m_telemetry.start_time, m_telemetry.end_time);
-	m_end_edit->set_value(m_telemetry.end_time);
-
-
-	// Add all the telmetry providers
-	{
-		generic_tree_item *root_item = new generic_tree_item({"Provider", "Title"});
-
-		QVector<uint32_t> expanded;
-
-		{
-			uint32_t index = 0;
-
-			for(auto &provider: m_telemetry.providers)
-			{
-				generic_tree_item *child = root_item->add_child({provider.title});
-
-				if(provider.identifier == provider_timing::identifier)
+				// We want at least 12 seconds worth of data to add it to the timeline
+				if((end - start) > 12.0)
 				{
-					expanded.push_front(index);
+					QString title;
 
 					try
 					{
-						auto &cpu = provider.find_field(provider_timing::cpu);
-						if(!cpu.data_points.empty())
-							cpu.enabled = true;
-
-						auto &gpu = provider.find_field(provider_timing::gpu);
-						if(!gpu.data_points.empty())
-							gpu.enabled = true;
+						title = aircraft_events.get_data_point_after_time(start + 5.0).value.get<const char *>();
 					}
 					catch(...)
-					{}
-				}
-
-				if(provider.identifier == provider_sim_apup::identifier)
-				{
-					auto &do_world_events = provider.find_field(provider_sim_apup::do_world);
-					auto &aircraft_events = provider.find_field(provider_sim_apup::loaded_aircraft);
-
-					bool is_doing_world = false;
-					double start_timestamp = 0.0;
-					double end_timestamp = 0.0;
-
-					auto flush_range = [this, &aircraft_events](double start, double end) {
-
-						// We want at least 12 seconds worth of data to add it to the timeline
-						if((end - start) > 12.0)
-						{
-							QString title;
-
-							try
-							{
-								title = aircraft_events.get_data_point_after_time(start + 5.0).value.toString();
-							}
-							catch(...)
-							{
-								title = "Event";
-							}
-
-							event_range range;
-							range.start = start + 8.0;
-							range.end = end - 3.0;
-							range.name = title + QString(" (") + time_picker_widget::format_time(range.start) + " - " + time_picker_widget::format_time(range.end) + QString(")");
-
-							m_event_ranges.push_back(range);
-						}
-
-					};
-
-					for(auto &data : do_world_events.data_points)
 					{
-						if(data.value.toBool() && !is_doing_world)
-						{
-							is_doing_world = true;
-							start_timestamp = data.timestamp;
-						}
-
-						if(data.value.toBool())
-							end_timestamp = data.timestamp;
-
-						if(!data.value.toBool() && is_doing_world)
-						{
-							is_doing_world = false;
-							flush_range(start_timestamp, end_timestamp);
-						}
+						title = "Event";
 					}
 
-					if(is_doing_world)
-						flush_range(start_timestamp, end_timestamp);
+					event_range range;
+					range.start = start + 8.0;
+					range.end = end - 3.0;
+					range.name = title + QString(" (") + time_picker_widget::format_time(range.start) + " - " + time_picker_widget::format_time(range.end) + QString(")");
+
+					m_event_ranges.push_back(range);
+					m_event_picker->addItem(range.name);
 				}
 
-				for(auto &entry: provider.fields)
+			};
+
+			for(auto &data : do_world_events.get_data_points())
+			{
+				if(data.value.get<bool>() && !is_doing_world)
 				{
-					if(entry.data_points.empty())
-						continue;
-
-					child->add_child({entry.enabled,
-									  entry.title + " (" + telemetry_unit_to_string(entry.unit) + ")"}, &entry);
+					is_doing_world = true;
+					start_timestamp = data.timestamp;
 				}
 
-				index++;
+				if(data.value.get<bool>())
+					end_timestamp = data.timestamp;
+
+				if(!data.value.get<bool>() && is_doing_world)
+				{
+					is_doing_world = false;
+					flush_range(start_timestamp, end_timestamp);
+				}
 			}
+
+			if(is_doing_world)
+				flush_range(start_timestamp, end_timestamp);
 		}
-
-		generic_tree_model *old_model = (generic_tree_model *)m_providers_view->model();
-		generic_tree_model *model = new generic_tree_model(root_item);
-		model->set_delegate(this);
-
-		m_providers_view->setModel(model);
-		m_providers_view->update();
-
-		for(auto &event : m_event_ranges)
-			m_event_picker->addItem(event.name);
 
 		if(m_event_ranges.size() > 1)
 		{
 			m_event_picker->setCurrentIndex(1);
-			range_changed(1);
+			range_changed();
 		}
 		else
-			set_time_range(m_telemetry.start_time, m_telemetry.end_time);
+			set_time_range(m_document.container.get_start_time(), m_document.container.get_end_time());
+	}
 
+	// Statistics view
+	{
+		QList<QTreeWidgetItem *> items;
 
-		for(auto index : expanded)
+		for(auto &stat : m_document.container.get_statistics())
 		{
-			m_providers_view->expand(model->index(index, 0, QModelIndex()));
+			QTreeWidgetItem *root_item = new QTreeWidgetItem();
+			root_item->setText(0, QString::fromStdString(stat.get_title()));
 
-			for(auto &field : m_telemetry.providers[index].fields)
+			for(auto &entry : stat.get_entries())
 			{
-				if(field.enabled)
-					m_chart_view->add_data(&field);
+				QTreeWidgetItem *stat_item = new QTreeWidgetItem(root_item);
+				stat_item->setText(0, QString::fromStdString(entry.title));
+
+				switch(entry.value.type)
+				{
+					case telemetry_type::uint8:
+					case telemetry_type::uint16:
+					case telemetry_type::uint32:
+					case telemetry_type::uint64:
+						stat_item->setText(1, QString::number(entry.value.get<uint64_t>()));
+						break;
+
+					case telemetry_type::int32:
+					case telemetry_type::int64:
+						stat_item->setText(1, QString::number(entry.value.get<int64_t>()));
+						break;
+
+					case telemetry_type::f32:
+					case telemetry_type::f64:
+						stat_item->setText(1, QString::number(entry.value.get<double>()));
+						break;
+
+					case telemetry_type::string:
+						stat_item->setText(1, QString::fromStdString(entry.value.string));
+						break;
+
+					default:
+						stat_item->setText(1, "Unsupported type");
+				}
+
+
+			}
+
+			items.push_back(root_item);
+		}
+
+		m_overview_view->clear();
+		m_overview_view->addTopLevelItems(items);
+
+		for(auto &item : items)
+			item->setExpanded(true);
+	}
+
+	// Add all the telemetry providers
+	{
+		QList<QTreeWidgetItem *> top_level_items;
+		QList<QTreeWidgetItem *> expanded_items;
+		QList<QTreeWidgetItem *> enabled_items;
+
+		{
+			for(auto &provider: m_document.container.get_providers())
+			{
+				QTreeWidgetItem *provider_item = new QTreeWidgetItem();
+				provider_item->setText(0, QString::fromStdString(provider.get_title()));
+				provider_item->setData(0, Qt::UserRole, QVariant::fromValue(&provider));
+
+				top_level_items.push_back(provider_item);
+
+				if(provider.get_identifier() == provider_timing::identifier)
+					expanded_items.push_back(provider_item);
+
+				for(auto &entry: provider.get_fields())
+				{
+					if(entry.empty())
+						continue;
+
+					QTreeWidgetItem *field = new QTreeWidgetItem(provider_item);
+					field->setCheckState(0, Qt::CheckState::Unchecked);
+					field->setText(1, QString::fromStdString(entry.get_title()));
+					field->setBackground(0, generate_color_for_title(field->text(1)));
+					field->setData(0, Qt::UserRole, QVariant::fromValue(&entry));
+
+					if(provider.get_identifier() == provider_timing::identifier)
+					{
+						if(entry.get_id() == provider_timing::cpu || entry.get_id() == provider_timing::gpu)
+							enabled_items.push_back(field);
+					}
+				}
 			}
 		}
 
-		delete old_model;
+		m_providers_view->clear();
+		m_providers_view->addTopLevelItems(top_level_items);
+
+		for(auto &item : expanded_items)
+			item->setExpanded(true);
+		for(auto &item : enabled_items)
+			item->setCheckState(0, Qt::CheckState::Checked);
 	}
+
 	{
-		generic_tree_item *root_item = new generic_tree_item({"Event", "Duration", "Path"});
-		auto add_span = [](generic_tree_item* root, const telemetry_event_span& ev) {
-			auto add_span_impl = [](generic_tree_item* root, const telemetry_event_span& ev, auto& r) -> void
+
+		auto create_span = [](const telemetry_event &event) -> QTreeWidgetItem * {
+			auto create_child_span = [](QTreeWidgetItem *root, const telemetry_event &event, auto &r) -> QTreeWidgetItem *
 			{
 				QString path;
-				for (auto& f : ev.fields)
+
+				for(auto &entry: event.get_entries())
 				{
-					if (f.first == "path")
-						path = f.second.toString();
+					if(entry.title == "path")
+						path = entry.value.get<const char *>();
 				}
 
-				generic_tree_item *child = root->add_child({ (quint64)ev.id, (ev.end - ev.begin) * 1000.0f, path });
+				QTreeWidgetItem *item = new QTreeWidgetItem(root);
+				item->setText(0, QString::number(event.get_id()));
+				item->setText(1, QString::number(ceilf(event.get_duration() * 1000.0f)));
+				item->setText(2, path);
 
-				for (auto& child_ev: ev.child_spans)
-					r(child, child_ev, r);
+				for (auto &child: event.get_children())
+					r(item, child, r);
+
+				return item;
 			};
 
-			add_span_impl(root, ev, add_span_impl);
+			return create_child_span(nullptr, event, create_child_span);
 		};
-		for (auto& ev : m_telemetry.event_spans)
-			add_span(root_item, ev);
 
-		generic_tree_model *old_model = (generic_tree_model*)m_timeline_tree->model();
-		generic_tree_model *model = new generic_tree_model(root_item);
-		m_timeline_tree->setModel(model);
-		m_timeline_tree->update();
-		delete old_model;
+		m_timeline_tree->clear();
 
-		m_timeline_widget->setTimelineSpans(m_telemetry.event_spans);
+		for(auto &event : m_document.container.get_events())
+			m_timeline_tree->addTopLevelItem(create_span(event));
+
+		m_timeline_widget->setTimelineSpans(m_document.container.get_events());
 	}
 }

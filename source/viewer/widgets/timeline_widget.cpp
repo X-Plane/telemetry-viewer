@@ -15,56 +15,58 @@
 constexpr double k_seconds_to_units = 1000.0;
 constexpr double seconds_to_ms(double sec) { return sec * k_seconds_to_units; }
 
-timeline_span_item::timeline_span_item(const QPalette& p, const telemetry_event_span& span, QGraphicsItem* parent)
+timeline_span_item::timeline_span_item(const QPalette& p, const telemetry_event& span, QGraphicsItem* parent)
 	: QGraphicsItem(parent)
 	, m_span(span)
 {
 	QString path;
 	QBrush color = p.window();
-	for (auto& f : span.fields)
+	for (auto& f : span.get_entries())
 	{
-		if (f.first == "path")
+		if (f.title == "path")
 		{
-			path = f.second.toString();
+			path = f.value.get<const char *>();
 		}
-		if (f.first == "io_result")
+		if (f.title == "io_result")
 		{
-			switch (f.second.toUInt()) {
+			switch (f.value.get<uint32_t>()) {
 				case 0: color = Qt::green; break;
 				case 1: color = Qt::red; break;
 			}
 		}
 	}
 
-	auto rect = new QGraphicsRectItem(0.f, 0.f, seconds_to_ms(span.end - span.begin), 20.f, this);
-	rect->setX(seconds_to_ms(span.begin));
+	auto child_count = span.get_children().size();
+
+	auto rect = new QGraphicsRectItem(0.f, 0.f, seconds_to_ms(span.get_duration()), 20.f, this);
+	rect->setX(seconds_to_ms(span.get_start()));
 	rect->setBrush(color);
 	rect->setPen(Qt::NoPen);
 	rect->setFlag(QGraphicsItem::ItemIsSelectable);
 	rect->setEnabled(true);
 	rect->setCursor(Qt::PointingHandCursor);
-	rect->setData(0, (quint64 )span.id);
+	rect->setData(0, QVariant(span.get_id()));
 
 	auto label_item = new QGraphicsSimpleTextItem(path, rect);
 	label_item->setBrush(p.text());
 	label_item->setFlag(QGraphicsItem::ItemIgnoresTransformations, true);
 	auto f = label_item->font();
-	if (!span.child_spans.empty())
+	if (child_count > 0)
 		f.setBold(true);
 	label_item->setFont(f);
-	auto child_count = span.child_spans.size();
-	auto label = QString("(%1 ms) %2 %3").arg((span.end - span.begin) * 1000).arg(path).arg(child_count);
+
+	auto label = QString("(%1 ms) %2 %3").arg(span.get_duration() * 1000).arg(path).arg(child_count);
 	this->setToolTip(label);
 	rect->setFlag(QGraphicsItem::ItemClipsChildrenToShape);
 
-	for (auto& child : span.child_spans)
+	for (auto& child : span.get_children())
 	{
 		m_span_groups.push_back(new timeline_span_item(p, child, this));
 		connect(m_span_groups.back(), &timeline_span_item::reflowed, [this]() { reflow(); });
 	}
 
 	std::sort(m_span_groups.begin(), m_span_groups.end(), [](timeline_span_item* a, timeline_span_item* b) {
-		return a->m_span.begin < b->m_span.begin;
+		return a->m_span.get_start() < b->m_span.get_start();
 	});
 
 	collapse();
@@ -72,7 +74,7 @@ timeline_span_item::timeline_span_item(const QPalette& p, const telemetry_event_
 
 QRectF timeline_span_item::boundingRect() const
 {
-	return {seconds_to_ms(m_span.begin), 0.0, seconds_to_ms(m_span.end - m_span.begin), 20.0 };
+	return {seconds_to_ms(m_span.get_start()), 0.0, seconds_to_ms(m_span.get_duration()), 20.0 };
 }
 
 void timeline_span_item::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget)
@@ -101,7 +103,7 @@ void timeline_span_item::expand()
 void timeline_span_item::contextMenuEvent(QGraphicsSceneContextMenuEvent* event)
 {
 	QMenu menu;
-	menu.addAction(QString("%1").arg(m_span.id));
+	menu.addAction(QString("%1").arg(m_span.get_id()));
 	if (!m_span_groups.empty())
 	{
 		if (m_span_groups.front()->isVisible())
@@ -147,14 +149,14 @@ timeline_widget::timeline_widget(QWidget *parent)
 	});
 }
 
-void timeline_widget::setTimelineSpans(const QVector<telemetry_event_span> &spans)
+void timeline_widget::setTimelineSpans(const std::vector<telemetry_event> &spans)
 {
 	double min_time = std::numeric_limits<float>::max();
 	double max_time = std::numeric_limits<float>::lowest();
 	for (auto& s : spans)
 	{
-		min_time = std::min(min_time, s.begin);
-		max_time = std::max(max_time, s.end);
+		min_time = std::min(min_time, s.get_duration());
+		max_time = std::max(max_time, s.get_duration());
 		m_span_groups.append(new timeline_span_item(scene.palette(), s, nullptr));
 		connect(m_span_groups.back(), &timeline_span_item::reflowed, this, &timeline_widget::reflowTimeline);
 		scene.addItem(m_span_groups.back());

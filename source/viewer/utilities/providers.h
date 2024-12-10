@@ -5,7 +5,7 @@
 #ifndef PROVIDERS_H
 #define PROVIDERS_H
 
-#include "../model/telemetry_container.h"
+#include <telemetry/container.h>
 
 struct provider_timing
 {
@@ -20,7 +20,7 @@ struct provider_timing
 		plugin,
 	};
 
-	static const telemetry_provider_field &get_field(const telemetry_container &container, field_id id) { return container.find_provider(identifier).find_field(uint8_t(id)); }
+	static const telemetry_field &get_field(const telemetry_container &container, field_id id) { return container.get_provider(identifier).get_field(uint8_t(id)); }
 };
 
 struct provider_sim_apup
@@ -34,7 +34,7 @@ struct provider_sim_apup
 		loaded_aircraft
 	};
 
-	static const telemetry_provider_field &get_field(const telemetry_container &container, field_id id) { return container.find_provider(identifier).find_field(uint8_t(id)); }
+	static const telemetry_field &get_field(const telemetry_container &container, field_id id) { return container.get_provider(identifier).get_field(uint8_t(id)); }
 };
 
 #endif //PROVIDERS_H
