@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.20)
 project(X-Telemetry-Utils)
 
+include(GNUInstallDirs)
+
 if(UNIX AND NOT APPLE)
 	set(IS_WIN32 0)
 	set(IS_MACOS 0)

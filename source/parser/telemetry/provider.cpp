@@ -3,6 +3,7 @@
 //
 
 #include <stdexcept>
+#include <cmath>
 #include "provider.h"
 
 telemetry_field::telemetry_field(uint8_t id, uint16_t provider, std::string title, telemetry_type type, telemetry_unit unit) :
@@ -25,7 +26,7 @@ telemetry_data_point telemetry_field::get_data_point_closest_to_time(int32_t tim
 			{
 				auto &previous = m_data_points[i - 1];
 
-				if(fabs(data.timestamp - time) > fabs(previous.timestamp - time))
+				if(std::fabs(data.timestamp - time) > std::fabs(previous.timestamp - time))
 					return previous;
 			}
 

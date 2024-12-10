@@ -281,8 +281,8 @@ void finalize_container(telemetry_container &container, const telemetry_parser_o
 			}
 		}
 
-		container.set_start_time(floor(start_time));
-		container.set_end_time(ceil(end_time));
+		container.set_start_time(std::floor(start_time));
+		container.set_end_time(std::ceil(end_time));
 	}
 
 	if(options.data_point_processor)
@@ -310,8 +310,8 @@ void finalize_container(telemetry_container &container, const telemetry_parser_o
 			}
 		}
 
-		container.set_start_time(floor(start_time));
-		container.set_end_time(ceil(end_time));
+		container.set_start_time(std::floor(start_time));
+		container.set_end_time(std::ceil(end_time));
 	}
 }
 
