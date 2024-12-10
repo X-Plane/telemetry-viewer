@@ -4,9 +4,10 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
 
 env:
-  BUILD_TYPE: Release
+  BUILD_TYPE: RelWithDebInfo
 
 jobs:
   build:
@@ -30,7 +31,7 @@ jobs:
       run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DCMAKE_PREFIX_PATH=${{env.QT_ROOT_DIR}}
 
     - name: Build
-      run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --target tlm-viewer --parallel
+      run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --target tlm tlm-static tlm-viewer --parallel
 
     - name: Install
       run: cmake --install ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --prefix ${{github.workspace}}/install
@@ -39,4 +40,12 @@ jobs:
       with:
         name: ${{matrix.os}}-artifacts
         path: ${{github.workspace}}/install/bin
+        if-no-files-found: error
+
+    - uses: actions/upload-artifact@v4
+      with:
+        name: ${{matrix.os}}-library-artifacts
+        path: |
+          ${{github.workspace}}/install/include
+          ${{github.workspace}}/install/lib
         if-no-files-found: error

@@ -52,17 +52,17 @@ set(SOURCES
 		resources/resources.qrc)
 
 set(DEFINITIONS
-	WIN=${IS_WIN32}
-	LIN=${IS_LINUX}
-	APL=${IS_MACOS}
-	VERSION_MAJOR=${VIEWER_VERSION_MAJOR}
-	VERSION_MINOR=${VIEWER_VERSION_MINOR}
-	VERSION_PATCH=${VIEWER_VERSION_PATCH})
+		WIN=${IS_WIN32}
+		LIN=${IS_LINUX}
+		APL=${IS_MACOS}
+		VERSION_MAJOR=${VIEWER_VERSION_MAJOR}
+		VERSION_MINOR=${VIEWER_VERSION_MINOR}
+		VERSION_PATCH=${VIEWER_VERSION_PATCH})
 
 add_executable(tlm-viewer WIN32 MACOSX_BUNDLE ${SOURCES})
 set_target_properties(tlm-viewer PROPERTIES OUTPUT_NAME "Telemetry Viewer")
 
-target_link_libraries(tlm-viewer tlm ${QT_COMPONENTS})
+target_link_libraries(tlm-viewer tlm-static ${QT_COMPONENTS})
 target_compile_definitions(tlm-viewer PRIVATE ${DEFINITIONS})
 target_include_directories(tlm-viewer SYSTEM PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
@@ -76,18 +76,19 @@ if(IS_WIN32)
 			COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:tlm-viewer>/platforms/"
 			COMMAND ${CMAKE_COMMAND} -E copy_if_different "${QT_PLATFORM_PLUGIN}" "$<TARGET_FILE_DIR:tlm-viewer>/platforms/")
 
-	install(FILES "${QT_PLATFORM_PLUGIN}" DESTINATION bin/platforms)
+	install(FILES "${QT_PLATFORM_PLUGIN}" DESTINATION ${CMAKE_INSTALL_BINDIR}/platforms)
 
 	foreach(QT_COMPONENT ${QT_COMPONENTS})
 
 		add_custom_command(TARGET tlm-viewer-resources POST_BUILD
 				COMMAND ${CMAKE_COMMAND} -E copy_if_different "$<TARGET_FILE:${QT_COMPONENT}>" "$<TARGET_FILE_DIR:tlm-viewer>")
 
-		install(FILES "$<TARGET_FILE:${QT_COMPONENT}>" DESTINATION bin)
+		install(FILES "$<TARGET_FILE:${QT_COMPONENT}>" DESTINATION ${CMAKE_INSTALL_BINDIR})
 
 	endforeach()
 
 	add_dependencies(tlm-viewer tlm-viewer-resources)
+	install(FILES $<TARGET_PDB_FILE:tlm-viewer> DESTINATION ${CMAKE_INSTALL_BINDIR} OPTIONAL)
 
 endif()
 
@@ -122,11 +123,11 @@ if(IS_LINUX)
 
 	foreach(QT_COMPONENT ${QT_COMPONENTS})
 
-		install(FILES $<TARGET_FILE:${QT_COMPONENT}> DESTINATION lib)
+		install(FILES $<TARGET_FILE:${QT_COMPONENT}> DESTINATION ${CMAKE_INSTALL_LIBDIR})
 
 	endforeach()
 
 endif()
 
 install(TARGETS tlm-viewer
-		BUNDLE DESTINATION bin)
+		BUNDLE DESTINATION ${CMAKE_INSTALL_BINDIR})
