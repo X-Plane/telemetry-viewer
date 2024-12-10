@@ -45,7 +45,7 @@ timeline_span_item::timeline_span_item(const QPalette& p, const telemetry_event&
 	rect->setFlag(QGraphicsItem::ItemIsSelectable);
 	rect->setEnabled(true);
 	rect->setCursor(Qt::PointingHandCursor);
-	rect->setData(0, QVariant(span.get_id()));
+	rect->setData(0, QVariant::fromValue(span.get_id()));
 
 	auto label_item = new QGraphicsSimpleTextItem(path, rect);
 	label_item->setBrush(p.text());
