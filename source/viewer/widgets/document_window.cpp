@@ -737,7 +737,7 @@ void document_window::update_telemetry()
 
 				QTreeWidgetItem *item = new QTreeWidgetItem(root);
 				item->setText(0, QString::number(event.get_id()));
-				item->setText(1, QString::number(ceilf(event.get_duration() * 1000.0f)));
+				item->setText(1, QString::number(std::ceil(event.get_duration() * 1000.0f)));
 				item->setText(2, path);
 
 				for (auto &child: event.get_children())

@@ -449,7 +449,7 @@ void chart_widget::rescale_axes()
 			case telemetry_unit::memory:
 				min_value = scale_memory(axis->minimum);
 				max_value = scale_memory(axis->maximum);
-				max_value = 1 << uint32_t(ceil(log2(max_value)));
+				max_value = 1 << uint32_t(std::ceil(std::log2(max_value)));
 				break;
 
 			default:

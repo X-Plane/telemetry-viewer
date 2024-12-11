@@ -2,6 +2,7 @@
 // Created by Sidney on 28/07/2020.
 //
 
+#include <cmath>
 #include "data_decimator.h"
 
 std::vector<telemetry_data_point> decimate_data(const std::vector<telemetry_data_point> &input, uint32_t threshold)
@@ -21,8 +22,8 @@ std::vector<telemetry_data_point> decimate_data(const std::vector<telemetry_data
 	for(size_t i = 0; i < threshold - 2; ++ i)
 	{
 		// Calculate the average
-		size_t range_start = floor((i + 1) * increment) + 1;
-		size_t range_end = std::min((size_t)(floor((i + 2) * increment) + 1), input.size());
+		size_t range_start = std::floor((i + 1) * increment) + 1;
+		size_t range_end = std::min((size_t)(std::floor((i + 2) * increment) + 1), input.size());
 
 		double average_x = 0.0;
 		double average_y = 0.0;
@@ -38,8 +39,8 @@ std::vector<telemetry_data_point> decimate_data(const std::vector<telemetry_data
 
 
 
-		range_start = floor((i + 0) * increment) + 1;
-		range_end = std::min((size_t)(floor((i + 1) * increment) + 1), input.size());
+		range_start = std::floor((i + 0) * increment) + 1;
+		range_end = std::min((size_t)(std::floor((i + 1) * increment) + 1), input.size());
 
 		const double point_a_x = input[a].timestamp;
 		const double point_a_y = input[a].value.get<double>();
