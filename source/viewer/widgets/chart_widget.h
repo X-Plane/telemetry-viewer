@@ -30,7 +30,7 @@ public:
 	chart_widget(QWidget *parent = nullptr);
 	~chart_widget() override;
 
-	void add_data(const telemetry_field *field, QColor color);
+	void add_data(const telemetry_field *field, QColor color, int32_t time_offset);
 	void remove_data(const telemetry_field *field);
 
 	void show_data(const telemetry_field *field);
@@ -77,6 +77,8 @@ private:
 		bool is_hidden = false;
 
 		QColor color;
+		int32_t time_offset = 0;
+
 		QLineSeries *line_series = nullptr;
 		QBoxPlotSeries *box_series = nullptr;
 		QBoxSet *box_set = nullptr;
@@ -92,7 +94,7 @@ private:
 	chart_axis *get_chart_axis_for_field(const telemetry_field *field) const;
 	chart_data &get_data_for_field(const telemetry_field *field);
 
-	QLineSeries *create_line_series(const telemetry_field *field) const;
+	QLineSeries *create_line_series(const telemetry_field *field, int32_t time_offset) const;
 
 	void rescale_axes();
 

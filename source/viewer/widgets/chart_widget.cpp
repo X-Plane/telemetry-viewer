@@ -178,12 +178,12 @@ void chart_widget::set_memory_scaling(memory_scaling scaling)
 	}
 
 	for(auto &[ field, color ] : fields)
-		add_data(field, color);
+		add_data(field, color, 0);
 }
 
 
 
-void chart_widget::add_data(const telemetry_field *field, QColor color)
+void chart_widget::add_data(const telemetry_field *field, QColor color, int32_t time_offset)
 {
 	auto iterator = std::find_if(m_data.begin(), m_data.end(), [&](const chart_data &data) {
 		return (field == data.field);
@@ -201,8 +201,9 @@ void chart_widget::add_data(const telemetry_field *field, QColor color)
 	data.min_value = min_value;
 	data.max_value = max_value;
 	data.color = color;
+	data.time_offset = time_offset;
 
-	data.line_series = create_line_series(data.field);
+	data.line_series = create_line_series(data.field, time_offset);
 	data.line_series->setColor(data.color);
 
 	data.box_set = new QBoxSet();
@@ -488,7 +489,7 @@ void chart_widget::rescale_axes()
 	}
 }
 
-QLineSeries *chart_widget::create_line_series(const telemetry_field *field) const
+QLineSeries *chart_widget::create_line_series(const telemetry_field *field, int32_t time_offset) const
 {
 	QLineSeries *series = new QLineSeries();
 	series->setName(QString::fromStdString(field->get_title()));
@@ -502,10 +503,12 @@ QLineSeries *chart_widget::create_line_series(const telemetry_field *field) cons
 
 	for(auto &data : field->get_data_points())
 	{
+		double timestamp = data.timestamp + time_offset;
+
 		// If there is more than a second of time between data changes, repeat the last point again but at the current time
 		// this will prevent the graph interpolating between the last and new value, when the telemetry system assumes values are sticky until they change
-		if(data.timestamp - last_time >= 1.0)
-			series->append(data.timestamp, last_value);
+		if(timestamp - last_time >= 1.0)
+			series->append(timestamp, last_value);
 
 		qreal value;
 
@@ -526,9 +529,9 @@ QLineSeries *chart_widget::create_line_series(const telemetry_field *field) cons
 				break;
 		}
 
-		series->append(data.timestamp, value);
+		series->append(timestamp, value);
 
-		last_time = data.timestamp;
+		last_time = timestamp;
 		last_value = value;
 	}
 

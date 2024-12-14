@@ -21,6 +21,8 @@ public:
 	void set_document(telemetry_document *document);
 	void set_document_by_path(const QString &path);
 
+	void add_document(telemetry_document *document);
+
 	void restore_state(QSettings &state);
 	void save_state(QSettings &state) const;
 
@@ -50,6 +52,12 @@ private:
 		QString name;
 	};
 
+	struct additional_document
+	{
+		telemetry_document *document;
+		int32_t start_offset;
+	};
+
 	void clear();
 
 	void set_time_range(int32_t start, int32_t end);
@@ -58,6 +66,7 @@ private:
 	QColor generate_color_for_title(const QString &title) const;
 
 	telemetry_document *m_document;
+	QVector<additional_document> m_additional_documents;
 
 	QString m_base_dir;
 

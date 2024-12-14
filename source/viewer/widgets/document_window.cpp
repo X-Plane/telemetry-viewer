@@ -56,10 +56,43 @@ document_window::document_window() :
 		const telemetry_field *field = item->data(0, Qt::UserRole).value<const telemetry_field *>();
 		Q_ASSERT(field);
 
+		QVector<QPair<const telemetry_field *, int32_t>> fields;
+
+		for(auto &additional : m_additional_documents)
+		{
+			const auto &data = additional.document->get_data();
+			if(!data.has_provider(field->get_provider_id()))
+				continue;
+
+			const auto &provider = data.get_provider(field->get_provider_id());
+			if(!provider.has_field(field->get_id()))
+				continue;
+
+			const telemetry_field &additional_field = provider.get_field(field->get_id());
+			fields.push_back(qMakePair(&additional_field, additional.start_offset));
+		}
+
 		if(item->checkState(0) == Qt::Checked)
-			m_chart_view->add_data(field, item->background(0).color());
+		{
+			m_chart_view->add_data(field, item->background(0).color(), 0);
+
+			for(auto &[ additional, offset ] : fields)
+			{
+				QColor color = item->background(0).color();
+				color.setAlpha(128);
+
+				m_chart_view->add_data(additional, color, offset);
+			}
+		}
 		else
+		{
 			m_chart_view->remove_data(field);
+
+			for(auto &additional : fields)
+				m_chart_view->remove_data(additional.first);
+		}
+
+
 
 	});
 
@@ -179,6 +212,23 @@ void document_window::dropEvent(QDropEvent *event)
 	}
 
 	const QList<QUrl> urls = mime->urls();
+
+	if(qApp->keyboardModifiers() & Qt::ControlModifier)
+	{
+		for(auto &url : urls)
+		{
+			try
+			{
+				telemetry_document *document = qApp->load_file(url.toLocalFile());
+				add_document(document);
+			}
+			catch(...)
+			{}
+		}
+
+		return;
+	}
+
 	if(urls.size() == 1)
 	{
 		const QString path = urls[0].toLocalFile();
@@ -212,6 +262,11 @@ void document_window::clear()
 	m_providers_view->clear();
 	m_overview_view->clear();
 	m_timeline_tree->clear();
+
+	for(auto &additional : m_additional_documents)
+		delete additional.document;
+
+	m_additional_documents.clear();
 
 	delete m_document;
 	m_document = nullptr;
@@ -462,6 +517,79 @@ void document_window::set_document(telemetry_document *document)
 	}
 }
 
+void document_window::add_document(telemetry_document *document)
+{
+	additional_document entry;
+	entry.document = document;
+	entry.start_offset = 0.0;
+
+	const auto &container = document->get_data();
+
+	if(!container.has_provider(provider_sim_apup::identifier))
+		return;
+
+	QVector<event_range> ranges;
+
+	{
+		auto &do_world_events = provider_sim_apup::get_field(container, provider_sim_apup::do_world);
+		auto &aircraft_events = provider_sim_apup::get_field(container, provider_sim_apup::loaded_aircraft);
+
+		bool is_doing_world = false;
+		double start_timestamp = 0.0;
+		double end_timestamp = 0.0;
+
+		auto flush_range = [&aircraft_events, &ranges](double start, double end) {
+
+			// We want at least 12 seconds worth of data to add it to the timeline
+			if((end - start) > 12.0)
+			{
+				QString title;
+
+				try
+				{
+					title = aircraft_events.get_data_point_after_time(start + 5.0).value.get<const char *>();
+				}
+				catch(...)
+				{
+					title = "Event";
+				}
+
+				event_range range;
+				range.start = start + 8.0;
+				range.end = end - 3.0;
+				range.name = title + QString(" (") + time_picker_widget::format_time(range.start) + " - " + time_picker_widget::format_time(range.end) + QString(")");
+
+				ranges.push_back(range);
+			}
+
+		};
+
+		for(auto &data : do_world_events.get_data_points())
+		{
+			if(data.value.get<bool>() && !is_doing_world)
+			{
+				is_doing_world = true;
+				start_timestamp = data.timestamp;
+			}
+
+			if(data.value.get<bool>())
+				end_timestamp = data.timestamp;
+
+			if(!data.value.get<bool>() && is_doing_world)
+			{
+				is_doing_world = false;
+				flush_range(start_timestamp, end_timestamp);
+			}
+		}
+
+		if(is_doing_world)
+			flush_range(start_timestamp, end_timestamp);
+	}
+
+	entry.start_offset = m_event_ranges[1].start - ranges[0].start;
+
+	m_additional_documents.push_back(entry);
+}
 
 
 
