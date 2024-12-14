@@ -607,7 +607,7 @@ void document_window::open_file()
 
 void document_window::save_file()
 {
-	if(m_document->has_data())
+	if(!m_document->has_data())
 		return;
 
 	QString base_path = m_base_dir;
