@@ -536,9 +536,9 @@ telemetry_container parser_tlmv2_data(file_reader &reader, const telemetry_parse
 
 
 
-telemetry_container parse_telemetry_data(const uint8_t *data, size_t size, const telemetry_parser_options &options)
+telemetry_container parse_telemetry_data(const void *data, size_t size, const telemetry_parser_options &options)
 {
-	file_reader reader(data, size);
+	file_reader reader(static_cast<const uint8_t *>(data), size);
 
 	const uint32_t telemetry_version = reader.read_uint32();
 	const uint32_t length = reader.read_uint32();

@@ -166,7 +166,7 @@ void chart_widget::set_memory_scaling(memory_scaling scaling)
 
 	m_memory_scaling = scaling;
 
-	QVector<QPair<telemetry_field *, QColor>> fields;
+	QVector<QPair<const telemetry_field *, QColor>> fields;
 
 	for(auto &data : m_data)
 	{
@@ -183,7 +183,7 @@ void chart_widget::set_memory_scaling(memory_scaling scaling)
 
 
 
-void chart_widget::add_data(telemetry_field *field, QColor color)
+void chart_widget::add_data(const telemetry_field *field, QColor color)
 {
 	auto iterator = std::find_if(m_data.begin(), m_data.end(), [&](const chart_data &data) {
 		return (field == data.field);
@@ -234,7 +234,7 @@ void chart_widget::add_data(telemetry_field *field, QColor color)
 
 	rescale_axes();
 }
-void chart_widget::remove_data(telemetry_field *field)
+void chart_widget::remove_data(const telemetry_field *field)
 {
 	auto iterator = std::find_if(m_data.begin(), m_data.end(), [&](const chart_data &data) {
 		return (field == data.field);
@@ -253,7 +253,7 @@ void chart_widget::remove_data(telemetry_field *field)
 	}
 }
 
-void chart_widget::show_data(telemetry_field *field)
+void chart_widget::show_data(const telemetry_field *field)
 {
 	chart_data &data = get_data_for_field(field);
 
@@ -263,7 +263,7 @@ void chart_widget::show_data(telemetry_field *field)
 		rescale_axes();
 	}
 }
-void chart_widget::hide_data(telemetry_field *field)
+void chart_widget::hide_data(const telemetry_field *field)
 {
 	chart_data &data = get_data_for_field(field);
 
@@ -335,7 +335,7 @@ void chart_widget::build_chart_axis(telemetry_unit unit)
 	m_axes.append(axis);
 }
 
-chart_widget::chart_axis *chart_widget::get_chart_axis_for_field(telemetry_field *field) const
+chart_widget::chart_axis *chart_widget::get_chart_axis_for_field(const telemetry_field *field) const
 {
 	telemetry_unit unit = field->get_unit();
 	if(unit == telemetry_unit::duration)
@@ -355,7 +355,7 @@ chart_widget::chart_axis *chart_widget::get_chart_axis_for_field(telemetry_field
 	return fallback;
 }
 
-chart_widget::chart_data &chart_widget::get_data_for_field(telemetry_field *field)
+chart_widget::chart_data &chart_widget::get_data_for_field(const telemetry_field *field)
 {
 	auto iterator = std::find_if(m_data.begin(), m_data.end(), [&](const chart_data &data) {
 		return (field == data.field);
@@ -488,7 +488,7 @@ void chart_widget::rescale_axes()
 	}
 }
 
-QLineSeries *chart_widget::create_line_series(telemetry_field *field) const
+QLineSeries *chart_widget::create_line_series(const telemetry_field *field) const
 {
 	QLineSeries *series = new QLineSeries();
 	series->setName(QString::fromStdString(field->get_title()));

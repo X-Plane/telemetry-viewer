@@ -25,8 +25,9 @@ set(QT_PLATFORMS_DIR "${Qt6_DIR}/../../../plugins/platforms")
 
 set(SOURCES
 		main.cpp
-		model/recently_opened.cpp
-		model/recently_opened.h
+		application.cpp
+		model/telemetry_document.cpp
+		model/telemetry_document.h
 		utilities/color.h
 		utilities/data_decimator.cpp
 		utilities/data_decimator.h
@@ -37,14 +38,14 @@ set(SOURCES
 		utilities/settings.h
 		utilities/xplane_installations.cpp
 		utilities/xplane_installations.h
+		widgets/chart_widget.cpp
+		widgets/chart_widget.h
 		widgets/document_window.ui
 		widgets/document_window.cpp
 		widgets/document_window.h
 		widgets/test_runner_dialog.ui
 		widgets/test_runner_dialog.cpp
 		widgets/test_runner_dialog.h
-		widgets/chart_widget.cpp
-		widgets/chart_widget.h
 		widgets/time_picker_widget.cpp
 		widgets/time_picker_widget.h
 		widgets/timeline_widget.cpp

@@ -375,6 +375,9 @@
         <bool>false</bool>
        </property>
        <widget class="QTreeWidget" name="m_overview_view">
+        <property name="selectionMode">
+         <enum>QAbstractItemView::SelectionMode::NoSelection</enum>
+        </property>
         <attribute name="headerDefaultSectionSize">
          <number>200</number>
         </attribute>
@@ -390,6 +393,9 @@
         </column>
        </widget>
        <widget class="QTreeWidget" name="m_providers_view">
+        <property name="selectionMode">
+         <enum>QAbstractItemView::SelectionMode::NoSelection</enum>
+        </property>
         <attribute name="headerDefaultSectionSize">
          <number>200</number>
         </attribute>
