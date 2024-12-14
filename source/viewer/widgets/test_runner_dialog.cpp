@@ -46,6 +46,9 @@ test_runner_dialog::test_runner_dialog(xplane_installation *installation) :
 	m_settings_preset->addItem("4");
 	m_settings_preset->addItem("5");
 
+	m_tod_box->addItem("Day");
+	m_tod_box->addItem("Night");
+
 	m_resolution_preset->addItem("Use current resolution");
 	m_resolution_preset->addItem("Fullscreen 1080p");
 	m_resolution_preset->addItem("Fullscreen 1440p");
@@ -97,7 +100,7 @@ void test_runner_dialog::load_settings()
 		}
 	}
 	{
-		const QString replay = settings.value("replays", "").toString();
+		const QString replay = settings.value("replay", "").toString();
 
 		for(int i = 0; i < m_replay_files.size(); ++ i)
 		{
@@ -121,6 +124,10 @@ void test_runner_dialog::load_settings()
 		const int resolution_preset = settings.value("resolution_preset", 0).toInt();
 		m_resolution_preset->setCurrentIndex(resolution_preset);
 	}
+	{
+		const int tod_preset = settings.value("tod", 0).toInt();
+		m_tod_box->setCurrentIndex(tod_preset);
+	}
 
 	m_additional_commands->setText(settings.value("additional_commands", "").toString());
 
@@ -139,6 +146,7 @@ void test_runner_dialog::save_settings()
 	settings.setValue("weather_preset", m_weather_preset->currentIndex());
 	settings.setValue("settings_preset", m_settings_preset->currentIndex());
 	settings.setValue("resolution_preset", m_resolution_preset->currentIndex());
+	settings.setValue("tod", m_tod_box->currentIndex());
 
 	settings.setValue("additional_commands", m_additional_commands->text());
 
@@ -161,8 +169,9 @@ uint32_t test_runner_dialog::get_fps_test() const
 {
 	const uint32_t test = m_settings_preset->currentIndex() + 1;
 	const uint32_t weather = m_weather_preset->currentIndex() * 10;
+	const uint32_t tod = m_tod_box->currentIndex() == 1 ? 200 : 0;
 
-	return test + weather;
+	return test + weather + tod;
 }
 
 QString test_runner_dialog::get_executable() const
