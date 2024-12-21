@@ -13,7 +13,6 @@ Q_OBJECT
 
 public:
 	time_picker_widget(QWidget *parent = nullptr);
-	~time_picker_widget();
 
 	QSize sizeHint() const override;
 
@@ -32,6 +31,7 @@ Q_SIGNALS:
 
 private:
 	void format_value() const;
+	void interpret_text();
 
 	int32_t m_start;
 	int32_t m_end;

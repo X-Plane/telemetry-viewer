@@ -3,10 +3,11 @@
 //
 
 #include <QDir>
-#include <qclipboard.h>
+#include <QClipboard>
+#include <model/xplane_installation.h>
+#include <utilities/settings.h>
 
 #include "test_runner_dialog.h"
-#include "utilities/settings.h"
 
 test_runner_dialog::test_runner_dialog(xplane_installation *installation) :
 	m_installation(installation)
@@ -14,12 +15,12 @@ test_runner_dialog::test_runner_dialog(xplane_installation *installation) :
 	setupUi(this);
 	setWindowTitle(QString("Run FPS Test"));
 
-	for(auto &executable : m_installation->executables)
-	{
-		m_executable->addItem(executable);
-	}
+	m_executables = installation->get_executables();
 
-	QDir replay_dir(m_installation->replay_path);
+	for(auto &executable : m_executables)
+		m_executable->addItem(executable);
+
+	QDir replay_dir(m_installation->get_replay_path());
 
 	for(auto &file : replay_dir.entryInfoList())
 	{
@@ -90,9 +91,9 @@ void test_runner_dialog::load_settings()
 	{
 		const QString executable = settings.value("executable", "").toString();
 
-		for(int i = 0; i < m_installation->executables.size(); ++ i)
+		for(int i = 0; i < m_executables.size(); ++ i)
 		{
-			if(m_installation->executables[i] == executable)
+			if(m_executables[i] == executable)
 			{
 				m_executable->setCurrentIndex(i);
 				break;
@@ -140,7 +141,7 @@ void test_runner_dialog::save_settings()
 
 	settings.beginGroup("test_runner");
 
-	settings.setValue("executable", m_installation->executables[m_executable->currentIndex()]);
+	settings.setValue("executable", m_executables[m_executable->currentIndex()]);
 	settings.setValue("replay", m_replay_files[m_replay_file->currentIndex()]);
 
 	settings.setValue("weather_preset", m_weather_preset->currentIndex());
@@ -176,7 +177,7 @@ uint32_t test_runner_dialog::get_fps_test() const
 
 QString test_runner_dialog::get_executable() const
 {
-	return m_installation->path + "/" + m_installation->executables[m_executable->currentIndex()];
+	return m_installation->get_path() + "/" + m_executables[m_executable->currentIndex()];
 }
 
 QStringList test_runner_dialog::get_arguments(const QString &telemetry_path, bool escape_paths) const
@@ -188,13 +189,33 @@ QStringList test_runner_dialog::get_arguments(const QString &telemetry_path, boo
 	result.push_back("--event_trace");
 	result.push_back("--fps_test=" + QString::asprintf("%i", get_fps_test()));
 
+	auto make_full_path_happy_for_xplane = [](const QString &path) {
+#if WIN
+		// X-Plane stupidly will not accept / as a separator after the drive name
+		if(path.length() > 3)
+		{
+			if(path[1] == ':' && path[2] == '/')
+			{
+				QString result = path;
+				result[2] = '\\';
+
+				return result;
+			}
+		}
+#endif
+
+		return path;
+	};
+
+	QString replay_path = make_full_path_happy_for_xplane(m_installation->get_replay_path() + "/" + m_replay_files[m_replay_file->currentIndex()]);
+
 	if(escape_paths)
-		result.push_back("--load_smo=\"" + xplaneify_path(m_installation->replay_path + "/" + m_replay_files[m_replay_file->currentIndex()]) + "\"");
+		result.push_back("--load_smo=\"" + replay_path + "\"");
 	else
-		result.push_back("--load_smo=" + xplaneify_path(m_installation->replay_path + "/" + m_replay_files[m_replay_file->currentIndex()]));
+		result.push_back("--load_smo=" + replay_path);
 
 	if(!telemetry_path.isEmpty())
-		result.push_back("--telemetry_path=" + xplaneify_path(telemetry_path) + "");
+		result.push_back("--telemetry_path=" + make_full_path_happy_for_xplane(telemetry_path) + "");
 
 	switch(m_resolution_preset->currentIndex())
 	{

@@ -8,6 +8,8 @@
 #include <QApplication>
 #include <QSettings>
 
+#include <model/xplane_installation.h>
+
 class document_window;
 class telemetry_document;
 
@@ -26,6 +28,8 @@ public:
 
 	std::vector<std::unique_ptr<QAction>> get_recently_opened_files();
 	void clear_recently_opened_files();
+
+	QVector<xplane_installation> get_installations() const;
 
 protected:
 	application(int &argc, char **argv);

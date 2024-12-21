@@ -7,7 +7,7 @@
 
 #include <ui_document_window.h>
 #include <model/telemetry_document.h>
-#include <utilities/xplane_installations.h>
+#include <model/xplane_installation.h>
 
 class test_runner_dialog;
 
@@ -65,14 +65,16 @@ private:
 	void set_time_range(int32_t start, int32_t end);
 	void touch_telemetry_file(const QFileInfo &file_info);
 
+	QColor generate_color_for_title(const QString &title) const;
+
 	telemetry_document *m_document;
 	QVector<additional_document> m_additional_documents;
 	QVector<const telemetry_field *> m_enabled_fields;
 
 	QString m_base_dir;
+	std::vector<std::unique_ptr<QAction>> m_recent_file_actions;
 
 	QVector<event_range> m_event_ranges;
-	std::vector<std::unique_ptr<QAction>> m_recent_file_actions;
 	QVector<xplane_installation> m_installations;
 };
 

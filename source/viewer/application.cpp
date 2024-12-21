@@ -220,6 +220,76 @@ void application::clear_recently_opened_files()
 }
 
 
+QVector<xplane_installation> application::get_installations() const
+{
+	const QString install_file_name("x-plane_install_12.txt");
+
+	QString installer_path;
+
+#if WIN || APL
+	installer_path = QStandardPaths::writableLocation(QStandardPaths::GenericConfigLocation) + "/" + install_file_name;
+#else
+		installer_path = QStandardPaths::writableLocation(QStandardPaths::HomeLocation) + "/.x-plane/" + install_file_name;
+#endif
+
+	QFileInfo info(installer_path);
+
+	if(!info.exists() || !info.isFile())
+	{
+		qDebug() << "No X-Plane install file found in " << installer_path;
+		return {};
+	}
+
+	QFile file(info.filePath());
+
+	if(!file.open(QIODevice::ReadOnly))
+	{
+		qDebug() << "Failed to open " << installer_path;
+		return {};
+	}
+
+	QVector<xplane_installation> installations;
+
+	const size_t length = file.bytesAvailable();
+
+	char *data = new char[length];
+	file.read(data, length);
+	file.close();
+
+	char *start_token = data;
+	char *token = start_token;
+
+	while(token < data + length)
+	{
+		if(!isprint(*token))
+		{
+			if(token > start_token)
+			{
+				*token = '\0';
+
+				QString install_path = QString(start_token);
+				QFileInfo path_info(install_path);
+
+				if(path_info.exists() && path_info.isDir())
+				{
+					xplane_installation install(install_path);
+					installations.push_back(std::move(install));
+				}
+			}
+
+			start_token = token + 1;
+		}
+
+		token ++;
+	}
+
+	delete[] data;
+
+	return installations;
+}
+
+
+
 int application::run(int &argc, char **argv)
 {
 	setApplicationName("Telemetry Viewer");

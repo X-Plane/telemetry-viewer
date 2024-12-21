@@ -28,6 +28,8 @@ set(SOURCES
 		application.cpp
 		model/telemetry_document.cpp
 		model/telemetry_document.h
+		model/xplane_installation.cpp
+		model/xplane_installation.h
 		utilities/color.h
 		utilities/data_decimator.cpp
 		utilities/data_decimator.h
@@ -36,8 +38,6 @@ set(SOURCES
 		utilities/providers.h
 		utilities/settings.cpp
 		utilities/settings.h
-		utilities/xplane_installations.cpp
-		utilities/xplane_installations.h
 		widgets/chart_widget.cpp
 		widgets/chart_widget.h
 		widgets/document_window.ui

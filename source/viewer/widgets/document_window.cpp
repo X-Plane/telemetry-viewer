@@ -11,7 +11,6 @@
 
 #include "utilities/color.h"
 #include "utilities/data_decimator.h"
-#include "utilities/xplane_installations.h"
 #include "utilities/settings.h"
 #include "utilities/performance_calculator.h"
 #include "utilities/providers.h"
@@ -84,23 +83,23 @@ document_window::document_window() :
 
 	connect(m_run_tests, &QPushButton::pressed, this, &document_window::run_fps_test);
 
-	m_installations = get_xplane_installations();
+	m_installations = qApp->get_installations();
 
 	QSettings settings = open_settings();
 	const QString selected_install = settings.value("installation", "").toString();
 
 	for(auto &install : m_installations)
 	{
-		m_installation_selector->addItem(install.path);
+		m_installation_selector->addItem(install.get_path());
 
-		if(selected_install == install.path)
+		if(selected_install == install.get_path())
 			m_installation_selector->setCurrentIndex(m_installation_selector->count() - 1);
 	}
 
 	connect(m_installation_selector, &QComboBox::currentIndexChanged, [this](int index) {
 
 		QSettings settings = open_settings();
-		settings.setValue("installation", m_installations[index].path);
+		settings.setValue("installation", m_installations[index].get_path());
 
 	});
 
@@ -311,9 +310,13 @@ void document_window::set_document(telemetry_document *document)
 	if(!m_document)
 		return;
 
-	setWindowFilePath(m_document->get_path());
+	const QString path = m_document->get_path();
+	const QFileInfo info(path);
 
-	statusBar()->showMessage("Loaded " + document->get_path());
+	m_base_dir = info.absolutePath();
+
+	setWindowFilePath(path);
+	statusBar()->showMessage("Loaded " + path);
 
 	const auto &container = m_document->get_data();
 
@@ -748,7 +751,7 @@ void document_window::open_file()
 	QString base_path = m_base_dir;
 
 	if(!m_installations.empty() && base_path.isEmpty())
-		base_path = m_installations[m_installation_selector->currentIndex()].telemetry_path;
+		base_path = m_installations[m_installation_selector->currentIndex()].get_telemetry_path();
 
 	QString path = QFileDialog::getOpenFileName(this, tr("Open Telemetry file"), base_path, tr("Telemetry File (*.tlm)"));
 	QFileInfo info(path);
@@ -762,13 +765,13 @@ void document_window::open_file()
 
 void document_window::save_file()
 {
-	if(m_document->has_data())
+	if(!m_document->has_data())
 		return;
 
 	QString base_path = m_base_dir;
 
 	if(!m_installations.empty() && base_path.isEmpty())
-		base_path = m_installations[m_installation_selector->currentIndex()].telemetry_path;
+		base_path = m_installations[m_installation_selector->currentIndex()].get_telemetry_path();
 
 	QString path = QFileDialog::getSaveFileName(this, tr("Save Telemetry file"), base_path, tr("Telemetry File (*.tlm)"));
 
