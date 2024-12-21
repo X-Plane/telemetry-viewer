@@ -6,8 +6,6 @@
 #include <QStringBuilder>
 #include "time_picker_widget.h"
 
-#include "telemetry/data.h"
-
 time_picker_widget::time_picker_widget(QWidget *parent) :
 	QAbstractSpinBox(parent),
 	m_start(0),
