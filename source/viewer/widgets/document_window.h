@@ -7,7 +7,7 @@
 
 #include <ui_document_window.h>
 #include <model/telemetry_document.h>
-#include <utilities/xplane_installations.h>
+#include <model/xplane_installation.h>
 
 class test_runner_dialog;
 
@@ -57,12 +57,12 @@ private:
 
 	QColor generate_color_for_title(const QString &title) const;
 
-	telemetry_document *m_document;
-
 	QString m_base_dir;
 
-	QVector<event_range> m_event_ranges;
+	telemetry_document *m_document;
 	std::vector<std::unique_ptr<QAction>> m_recent_file_actions;
+
+	QVector<event_range> m_event_ranges;
 	QVector<xplane_installation> m_installations;
 };
 

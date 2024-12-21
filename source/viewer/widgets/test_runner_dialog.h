@@ -5,9 +5,9 @@
 #ifndef TEST_RUNNER_DIALOG_H
 #define TEST_RUNNER_DIALOG_H
 
-#include <QDialog>
 #include <ui_test_runner_dialog.h>
-#include "../utilities/xplane_installations.h"
+
+class xplane_installation;
 
 class test_runner_dialog final : public QDialog, public Ui::test_runner_dialog
 {
@@ -33,6 +33,7 @@ private:
 	xplane_installation *m_installation;
 
 	QVector<QString> m_replay_files;
+	QVector<QString> m_executables;
 };
 
 #endif //TEST_RUNNER_DIALOG_H
