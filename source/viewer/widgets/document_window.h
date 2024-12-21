@@ -56,17 +56,18 @@ private:
 	{
 		telemetry_document *document;
 		int32_t start_offset;
+		QVector<event_range> event_ranges;
 	};
 
 	void clear();
+	void set_field_enabled(const telemetry_field *field, bool enable);
 
 	void set_time_range(int32_t start, int32_t end);
 	void touch_telemetry_file(const QFileInfo &file_info);
 
-	QColor generate_color_for_title(const QString &title) const;
-
 	telemetry_document *m_document;
 	QVector<additional_document> m_additional_documents;
+	QVector<const telemetry_field *> m_enabled_fields;
 
 	QString m_base_dir;
 

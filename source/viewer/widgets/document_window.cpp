@@ -16,6 +16,12 @@
 #include "utilities/performance_calculator.h"
 #include "utilities/providers.h"
 
+static QColor get_color_for_telemetry_field(const telemetry_field *field)
+{
+	return generate_color(QString::fromStdString(field->get_title()), 0.9f, 0.4f);
+}
+
+
 document_window::document_window() :
 	m_document(nullptr)
 {
@@ -56,43 +62,7 @@ document_window::document_window() :
 		const telemetry_field *field = item->data(0, Qt::UserRole).value<const telemetry_field *>();
 		Q_ASSERT(field);
 
-		QVector<QPair<const telemetry_field *, int32_t>> fields;
-
-		for(auto &additional : m_additional_documents)
-		{
-			const auto &data = additional.document->get_data();
-			if(!data.has_provider(field->get_provider_id()))
-				continue;
-
-			const auto &provider = data.get_provider(field->get_provider_id());
-			if(!provider.has_field(field->get_id()))
-				continue;
-
-			const telemetry_field &additional_field = provider.get_field(field->get_id());
-			fields.push_back(qMakePair(&additional_field, additional.start_offset));
-		}
-
-		if(item->checkState(0) == Qt::Checked)
-		{
-			m_chart_view->add_data(field, item->background(0).color(), 0);
-
-			for(auto &[ additional, offset ] : fields)
-			{
-				QColor color = item->background(0).color();
-				color.setAlpha(128);
-
-				m_chart_view->add_data(additional, color, offset);
-			}
-		}
-		else
-		{
-			m_chart_view->remove_data(field);
-
-			for(auto &additional : fields)
-				m_chart_view->remove_data(additional.first);
-		}
-
-
+		set_field_enabled(field, item->checkState(0) == Qt::Checked);
 
 	});
 
@@ -171,6 +141,52 @@ void document_window::closeEvent(QCloseEvent *event)
 }
 
 
+void document_window::set_field_enabled(const telemetry_field *field, bool enable)
+{
+	QVector<QPair<const telemetry_field *, int32_t>> fields;
+
+	for(auto &additional : m_additional_documents)
+	{
+		const auto &data = additional.document->get_data();
+		if(!data.has_provider(field->get_provider_id()))
+			continue;
+
+		const auto &provider = data.get_provider(field->get_provider_id());
+		if(!provider.has_field(field->get_id()))
+			continue;
+
+		const telemetry_field &additional_field = provider.get_field(field->get_id());
+		fields.push_back(qMakePair(&additional_field, additional.start_offset));
+	}
+
+	if(enable)
+	{
+		const QColor primary_color = get_color_for_telemetry_field(field);
+
+		QColor secondary_color = primary_color;
+		secondary_color.setAlpha(128);
+
+
+		m_chart_view->add_data(field, primary_color, 0);
+
+		for(auto &[ additional, offset ] : fields)
+			m_chart_view->add_data(additional, secondary_color, offset);
+
+		m_enabled_fields.push_back(field);
+	}
+	else
+	{
+		m_chart_view->remove_data(field);
+
+		for(auto &additional : fields)
+			m_chart_view->remove_data(additional.first);
+
+		const auto iterator = std::find(m_enabled_fields.begin(), m_enabled_fields.end(), field);
+		Q_ASSERT(iterator != m_enabled_fields.end());
+
+		m_enabled_fields.erase(iterator);
+	}
+}
 
 bool document_window::can_accept_mime_data(const QMimeData *mime) const
 {
@@ -458,13 +474,11 @@ void document_window::set_document(telemetry_document *document)
 					if(field.empty())
 						continue;
 
-					const QString title = QString::fromStdString(field.get_title());
-
 					QTreeWidgetItem *item = new QTreeWidgetItem(provider_item);
 					item->setCheckState(0, Qt::CheckState::Unchecked);
 					item->setData(0, Qt::UserRole, QVariant::fromValue(&field));
-					item->setBackground(0, generate_color_for_title(title));
-					item->setText(1, title);
+					item->setBackground(0, get_color_for_telemetry_field(&field));
+					item->setText(1, QString::fromStdString(field.get_title()));
 
 					if(provider.get_identifier() == provider_timing::identifier)
 					{
@@ -586,17 +600,30 @@ void document_window::add_document(telemetry_document *document)
 			flush_range(start_timestamp, end_timestamp);
 	}
 
+	entry.event_ranges = ranges;
 	entry.start_offset = m_event_ranges[1].start - ranges[0].start;
 
 	m_additional_documents.push_back(entry);
+
+	for(auto &field : m_enabled_fields)
+	{
+		const auto &data = entry.document->get_data();
+		if(!data.has_provider(field->get_provider_id()))
+			continue;
+
+		const auto &provider = data.get_provider(field->get_provider_id());
+		if(!provider.has_field(field->get_id()))
+			continue;
+
+		const telemetry_field &additional_field = provider.get_field(field->get_id());
+
+		QColor color = get_color_for_telemetry_field(field);
+		color.setAlpha(128);
+
+		m_chart_view->add_data(&additional_field, color, entry.start_offset);
+	}
 }
 
-
-
-QColor document_window::generate_color_for_title(const QString &title) const
-{
-	return generate_color(title, 0.9f, 0.4f);
-}
 
 void document_window::restore_state(QSettings &state)
 {
@@ -658,7 +685,7 @@ void document_window::save_state(QSettings &state) const
 			performance_calculator perf(field, start, end);
 
 			QBarSet *set = new QBarSet(QString::fromStdString(field.get_title()));
-			set->setColor(generate_color_for_title(set->label()));
+			set->setColor(get_color_for_telemetry_field(&field));
 
 			for(auto &perf_set : perf_series)
 			{
