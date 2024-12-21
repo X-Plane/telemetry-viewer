@@ -83,7 +83,10 @@ chart_widget::chart_widget(QWidget *parent) :
 	build_chart_axis(telemetry_unit::memory);
 
 	m_line_chart = new QChart();
+	m_line_chart->legend()->hide();
+
 	m_boxplot_chart = new QChart();
+	m_boxplot_chart->legend()->hide();
 
 	m_line_chart->addAxis(m_timeline_axis, Qt::AlignBottom);
 	m_boxplot_chart->addAxis(m_category_axis, Qt::AlignBottom);
@@ -476,17 +479,6 @@ void chart_widget::rescale_axes()
 		m_timeline_axis->setTickInterval(1);
 
 	m_timeline_axis->setRange(m_start, m_end);
-
-	QLegend *legend = m_boxplot_chart->legend();
-
-	for(auto &data : m_data)
-	{
-		if(!data.is_hidden)
-		{
-			auto markers = legend->markers(data.box_series);
-			markers.first()->setBrush(data.color);
-		}
-	}
 }
 
 QLineSeries *chart_widget::create_line_series(const telemetry_field *field, int32_t time_offset) const
