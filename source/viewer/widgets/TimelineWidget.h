@@ -7,11 +7,11 @@
 #include <QKeyEvent>
 #include <telemetry/event.h>
 
-class timeline_span_item : public QObject, public QGraphicsItem
+class TimelineSpanItem : public QObject, public QGraphicsItem
 {
 Q_OBJECT
 public:
-	timeline_span_item(const QPalette& p, const telemetry_event& span, QGraphicsItem* parent);
+	TimelineSpanItem(const QPalette& p, const telemetry_event& span, QGraphicsItem* parent);
 
 	void collapse();
 	void expand();
@@ -21,24 +21,24 @@ public:
 
 	void contextMenuEvent(QGraphicsSceneContextMenuEvent* event) override;
 
-signals:
+Q_SIGNALS:
 	void reflowed();
 
 protected:
 	void reflow();
 
 	telemetry_event m_span;
-	std::vector<timeline_span_item*> m_span_groups;
+	std::vector<TimelineSpanItem*> m_span_groups;
 };
 
-class timeline_widget : public QGraphicsView
+class TimelineWidget : public QGraphicsView
 {
 	Q_OBJECT
 
 	QGraphicsScene scene;
 
 public:
-	timeline_widget(QWidget *parent = nullptr);
+	TimelineWidget(QWidget *parent = nullptr);
 
 	void setTimelineSpans(const std::vector<telemetry_event>& spans);
 
@@ -49,10 +49,10 @@ public:
 
 	void drawBackground(QPainter*, const QRectF&) override;
 
-signals:
+Q_SIGNALS:
 	void spanFocused(uint64_t id);
 
-public slots:
+public Q_SLOTS:
 	void changeZoom(float scale);
 	void reflowTimeline();
 
@@ -60,7 +60,7 @@ private:
 	void viewportChange();
 
 	float m_time_scale = 100.f;
-	QVector<timeline_span_item*> m_span_groups;
+	QVector<TimelineSpanItem*> m_span_groups;
 };
 
 

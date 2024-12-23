@@ -8,11 +8,11 @@
 #include <QString>
 #include <telemetry/container.h>
 
-class telemetry_document
+class TelemetryDocument
 {
 public:
-	static telemetry_document *load_file(const QString &path);
-	static telemetry_document *load_file(std::vector<uint8_t> &&data);
+	static TelemetryDocument *load_file(const QString &path);
+	static TelemetryDocument *load_file(std::vector<uint8_t> &&data);
 
 	bool save(const QString &path);
 	bool is_draft() const { return m_path.isEmpty(); }
@@ -22,7 +22,7 @@ public:
 	const telemetry_container &get_data() const { return m_data; }
 
 protected:
-	telemetry_document() = default;
+	TelemetryDocument() = default;
 
 	void load(std::vector<uint8_t> &&data);
 

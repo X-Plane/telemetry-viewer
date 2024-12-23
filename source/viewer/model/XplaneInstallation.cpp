@@ -4,9 +4,9 @@
 
 #include <QFileInfo>
 #include <QDir>
-#include "xplane_installation.h"
+#include "XplaneInstallation.h"
 
-xplane_installation::xplane_installation(const QString &path) :
+XplaneInstallation::XplaneInstallation(const QString &path) :
 	m_path(path)
 {
 	QFileInfo info(path);
@@ -21,7 +21,7 @@ xplane_installation::xplane_installation(const QString &path) :
 	qDebug() << m_path << m_telemetry_path << m_replay_path;
 }
 
-QVector<QString> xplane_installation::get_executables() const
+QVector<QString> XplaneInstallation::get_executables() const
 {
 	QVector<QString> result;
 

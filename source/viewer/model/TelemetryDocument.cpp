@@ -3,11 +3,11 @@
 //
 
 #include <QFile>
-#include "telemetry_document.h"
+#include "TelemetryDocument.h"
 #include "telemetry/parser.h"
-#include "../utilities/data_decimator.h"
+#include "../utilities/DataDecimator.h"
 
-telemetry_document *telemetry_document::load_file(const QString &path)
+TelemetryDocument *TelemetryDocument::load_file(const QString &path)
 {
 	QFile file(path);
 
@@ -22,21 +22,21 @@ telemetry_document *telemetry_document::load_file(const QString &path)
 	file.read((char *)data.data(), length);
 	file.close();
 
-	telemetry_document *result = load_file(std::move(data));
+	TelemetryDocument *result = load_file(std::move(data));
 	result->m_path = path;
 
 	return result;
 }
 
-telemetry_document *telemetry_document::load_file(std::vector<uint8_t> &&data)
+TelemetryDocument *TelemetryDocument::load_file(std::vector<uint8_t> &&data)
 {
-	telemetry_document *result = new telemetry_document();
+	TelemetryDocument *result = new TelemetryDocument();
 	result->load(std::move(data));
 
 	return result;
 }
 
-void telemetry_document::load(std::vector<uint8_t> &&data)
+void TelemetryDocument::load(std::vector<uint8_t> &&data)
 {
 	telemetry_parser_options options;
 	options.data_point_processor = [](const telemetry_container &container, const telemetry_provider &provider, const telemetry_field &field, const std::vector<telemetry_data_point> &data_points) {
@@ -71,7 +71,7 @@ void telemetry_document::load(std::vector<uint8_t> &&data)
 	m_binary_data = std::move(data);
 }
 
-bool telemetry_document::save(const QString &path)
+bool TelemetryDocument::save(const QString &path)
 {
 	QFile file(path);
 

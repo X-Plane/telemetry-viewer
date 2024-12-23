@@ -7,10 +7,10 @@
 
 #include <telemetry/container.h>
 
-class performance_calculator
+class PerformanceCalculator
 {
 public:
-	performance_calculator(const telemetry_field &field, uint32_t start, uint32_t end);
+	PerformanceCalculator(const telemetry_field &field, uint32_t start, uint32_t end);
 
 	size_t get_sample_count() const { return m_samples.size(); }
 

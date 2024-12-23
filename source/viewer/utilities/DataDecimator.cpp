@@ -3,7 +3,7 @@
 //
 
 #include <cmath>
-#include "data_decimator.h"
+#include "DataDecimator.h"
 
 std::vector<telemetry_data_point> decimate_data(const std::vector<telemetry_data_point> &input, uint32_t threshold)
 {

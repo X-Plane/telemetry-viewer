@@ -25,31 +25,30 @@ set(QT_PLATFORMS_DIR "${Qt6_DIR}/../../../plugins/platforms")
 
 set(SOURCES
 		main.cpp
-		application.cpp
-		model/telemetry_document.cpp
-		model/telemetry_document.h
-		model/xplane_installation.cpp
-		model/xplane_installation.h
-		utilities/color.h
-		utilities/data_decimator.cpp
-		utilities/data_decimator.h
-		utilities/performance_calculator.cpp
-		utilities/performance_calculator.h
-		utilities/providers.h
-		utilities/settings.cpp
-		utilities/settings.h
-		widgets/chart_widget.cpp
-		widgets/chart_widget.h
-		widgets/document_window.ui
-		widgets/document_window.cpp
-		widgets/document_window.h
-		widgets/test_runner_dialog.ui
-		widgets/test_runner_dialog.cpp
-		widgets/test_runner_dialog.h
-		widgets/time_picker_widget.cpp
-		widgets/time_picker_widget.h
-		widgets/timeline_widget.cpp
-		widgets/timeline_widget.h
+		Application.cpp
+		model/TelemetryDocument.cpp
+		model/TelemetryDocument.h
+		model/XplaneInstallation.cpp
+		model/XplaneInstallation.h
+		utilities/Color.h
+		utilities/DataDecimator.cpp
+		utilities/DataDecimator.h
+		utilities/PerformanceCalculator.cpp
+		utilities/PerformanceCalculator.h
+		utilities/Settings.cpp
+		utilities/Settings.h
+		widgets/ChartWidget.cpp
+		widgets/ChartWidget.h
+		widgets/DocumentWindow.ui
+		widgets/DocumentWindow.cpp
+		widgets/DocumentWindow.h
+		widgets/TestRunnerDialog.ui
+		widgets/TestRunnerDialog.cpp
+		widgets/TestRunnerDialog.h
+		widgets/TimePickerWidget.cpp
+		widgets/TimePickerWidget.h
+		widgets/TimelineWidget.cpp
+		widgets/TimelineWidget.h
 		resources/resources.qrc)
 
 set(DEFINITIONS

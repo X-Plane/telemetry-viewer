@@ -4,18 +4,18 @@
 
 #include <QLegendMarker>
 #include <telemetry/container.h>
-#include "chart_widget.h"
-#include "utilities/color.h"
-#include "utilities/performance_calculator.h"
+#include "ChartWidget.h"
+#include "utilities/Color.h"
+#include "utilities/PerformanceCalculator.h"
 
-void chart_widget::chart_data::detach() const
+void ChartWidget::chart_data::detach() const
 {
 	for(auto &axis : line_series->attachedAxes())
 		line_series->detachAxis(axis);
 	for(auto &axis : box_series->attachedAxes())
 		box_series->detachAxis(axis);
 }
-void chart_widget::chart_data::hide()
+void ChartWidget::chart_data::hide()
 {
 	if(!is_hidden)
 		return;
@@ -25,7 +25,7 @@ void chart_widget::chart_data::hide()
 
 	is_hidden = false;
 }
-void chart_widget::chart_data::show()
+void ChartWidget::chart_data::show()
 {
 	if(!is_hidden)
 		return;
@@ -36,9 +36,9 @@ void chart_widget::chart_data::show()
 	is_hidden = false;
 }
 
-void chart_widget::chart_data::update_box_set(int32_t start, int32_t end, double scale_factor) const
+void ChartWidget::chart_data::update_box_set(int32_t start, int32_t end, double scale_factor) const
 {
-	performance_calculator calc(*field, start, end);
+	PerformanceCalculator calc(*field, start, end);
 
 	const size_t count = calc.get_sample_count();
 
@@ -63,10 +63,10 @@ void chart_widget::chart_data::update_box_set(int32_t start, int32_t end, double
 
 
 
-chart_widget::chart_widget(QWidget *parent) :
+ChartWidget::ChartWidget(QWidget *parent) :
 	QChartView(parent),
-	m_type(chart_type::line),
-	m_memory_scaling(memory_scaling::megabytes),
+	m_type(Type::Line),
+	m_memory_scaling(MemoryScaling::Megabytes),
 	m_start(0),
 	m_end(std::numeric_limits<int32_t>::max())
 {
@@ -99,16 +99,16 @@ chart_widget::chart_widget(QWidget *parent) :
 
 	switch(m_type)
 	{
-		case chart_type::line:
+		case Type::Line:
 			setChart(m_line_chart);
 			break;
-		case chart_type::boxplot:
+		case Type::Boxplot:
 			setChart(m_boxplot_chart);
 			break;
 	}
 
 }
-chart_widget::~chart_widget()
+ChartWidget::~ChartWidget()
 {
 	for(auto &axis : m_axes)
 		delete axis;
@@ -116,7 +116,7 @@ chart_widget::~chart_widget()
 
 
 
-void chart_widget::set_range(int32_t start, int32_t end)
+void ChartWidget::set_range(int32_t start, int32_t end)
 {
 	if(m_start == start && m_end == end)
 		return;
@@ -142,7 +142,7 @@ void chart_widget::set_range(int32_t start, int32_t end)
 	rescale_axes();
 }
 
-void chart_widget::set_type(chart_type type)
+void ChartWidget::set_type(Type type)
 {
 	if(m_type == type)
 		return;
@@ -151,10 +151,10 @@ void chart_widget::set_type(chart_type type)
 
 	switch(m_type)
 	{
-		case chart_type::line:
+		case Type::Line:
 			setChart(m_line_chart);
 			break;
-		case chart_type::boxplot:
+		case Type::Boxplot:
 			setChart(m_boxplot_chart);
 			break;
 	}
@@ -162,7 +162,7 @@ void chart_widget::set_type(chart_type type)
 	rescale_axes();
 }
 
-void chart_widget::set_memory_scaling(memory_scaling scaling)
+void ChartWidget::set_memory_scaling(MemoryScaling scaling)
 {
 	if(m_memory_scaling == scaling)
 		return;
@@ -186,7 +186,7 @@ void chart_widget::set_memory_scaling(memory_scaling scaling)
 
 
 
-void chart_widget::add_data(const telemetry_field *field, QColor color, int32_t time_offset)
+void ChartWidget::add_data(const telemetry_field *field, QColor color, int32_t time_offset)
 {
 	auto iterator = std::find_if(m_data.begin(), m_data.end(), [&](const chart_data &data) {
 		return (field == data.field);
@@ -238,7 +238,7 @@ void chart_widget::add_data(const telemetry_field *field, QColor color, int32_t 
 
 	rescale_axes();
 }
-void chart_widget::remove_data(const telemetry_field *field)
+void ChartWidget::remove_data(const telemetry_field *field)
 {
 	auto iterator = std::find_if(m_data.begin(), m_data.end(), [&](const chart_data &data) {
 		return (field == data.field);
@@ -257,7 +257,7 @@ void chart_widget::remove_data(const telemetry_field *field)
 	}
 }
 
-void chart_widget::show_data(const telemetry_field *field)
+void ChartWidget::show_data(const telemetry_field *field)
 {
 	chart_data &data = get_data_for_field(field);
 
@@ -267,7 +267,7 @@ void chart_widget::show_data(const telemetry_field *field)
 		rescale_axes();
 	}
 }
-void chart_widget::hide_data(const telemetry_field *field)
+void ChartWidget::hide_data(const telemetry_field *field)
 {
 	chart_data &data = get_data_for_field(field);
 
@@ -278,7 +278,7 @@ void chart_widget::hide_data(const telemetry_field *field)
 	}
 }
 
-void chart_widget::clear()
+void ChartWidget::clear()
 {
 	for(auto &data : m_data)
 		data.detach();
@@ -291,7 +291,7 @@ void chart_widget::clear()
 
 
 
-void chart_widget::build_chart_axis(telemetry_unit unit)
+void ChartWidget::build_chart_axis(telemetry_unit unit)
 {
 	auto build_axis = [](telemetry_unit unit) -> QValueAxis * {
 
@@ -339,7 +339,7 @@ void chart_widget::build_chart_axis(telemetry_unit unit)
 	m_axes.append(axis);
 }
 
-chart_widget::chart_axis *chart_widget::get_chart_axis_for_field(const telemetry_field *field) const
+ChartWidget::chart_axis *ChartWidget::get_chart_axis_for_field(const telemetry_field *field) const
 {
 	telemetry_unit unit = field->get_unit();
 	if(unit == telemetry_unit::duration)
@@ -359,7 +359,7 @@ chart_widget::chart_axis *chart_widget::get_chart_axis_for_field(const telemetry
 	return fallback;
 }
 
-chart_widget::chart_data &chart_widget::get_data_for_field(const telemetry_field *field)
+ChartWidget::chart_data &ChartWidget::get_data_for_field(const telemetry_field *field)
 {
 	auto iterator = std::find_if(m_data.begin(), m_data.end(), [&](const chart_data &data) {
 		return (field == data.field);
@@ -371,17 +371,17 @@ chart_widget::chart_data &chart_widget::get_data_for_field(const telemetry_field
 }
 
 
-double chart_widget::scale_memory(double bytes) const
+double ChartWidget::scale_memory(double bytes) const
 {
 	switch(m_memory_scaling)
 	{
-		case memory_scaling::bytes:
+		case MemoryScaling::Bytes:
 			return bytes;
-		case memory_scaling::kilobytes:
+		case MemoryScaling::Kilobytes:
 			return bytes / 1024.0;
-		case memory_scaling::megabytes:
+		case MemoryScaling::Megabytes:
 			return bytes / 1024.0 / 1024.0;
-		case memory_scaling::gigabytes:
+		case MemoryScaling::Gigabytes:
 			return bytes / 1024.0 / 1024.0 / 1024.0;
 
 	}
@@ -389,7 +389,7 @@ double chart_widget::scale_memory(double bytes) const
 	return bytes;
 }
 
-void chart_widget::rescale_axes()
+void ChartWidget::rescale_axes()
 {
 	uint32_t enabled_fields = 0;
 
@@ -481,7 +481,7 @@ void chart_widget::rescale_axes()
 	m_timeline_axis->setRange(m_start, m_end);
 }
 
-QLineSeries *chart_widget::create_line_series(const telemetry_field *field, int32_t time_offset) const
+QLineSeries *ChartWidget::create_line_series(const telemetry_field *field, int32_t time_offset) const
 {
 	QLineSeries *series = new QLineSeries();
 	series->setName(QString::fromStdString(field->get_title()));

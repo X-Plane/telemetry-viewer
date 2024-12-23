@@ -7,13 +7,14 @@
 
 #include <QApplication>
 #include <QSettings>
+#include <QAction>
 
-#include <model/xplane_installation.h>
+#include <model/XplaneInstallation.h>
 
-class document_window;
-class telemetry_document;
+class DocumentWindow;
+class TelemetryDocument;
 
-class application : public QApplication
+class Application : public QApplication
 {
 public:
 	static int run(int &argc, char **argv);
@@ -22,26 +23,26 @@ public:
 	void new_file();
 	void open_file(const QString &path);
 
-	void close_document(document_window *window);
+	void close_document(DocumentWindow *window);
 
-	telemetry_document *load_file(const QString &path);
+	TelemetryDocument *load_file(const QString &path);
 
 	std::vector<std::unique_ptr<QAction>> get_recently_opened_files();
 	void clear_recently_opened_files();
 
-	QVector<xplane_installation> get_installations() const;
+	QVector<XplaneInstallation> get_installations() const;
 
 protected:
-	application(int &argc, char **argv);
-	~application() override;
+	Application(int &argc, char **argv);
+	~Application() override;
 
 private:
 	QSettings m_settings;
-	QVector<document_window *> m_document_windows;
+	QVector<DocumentWindow *> m_document_windows;
 	QVector<QString> m_recently_opened;
 };
 
 #undef qApp
-#define qApp static_cast<application *>(application::instance())
+#define qApp static_cast<Application *>(Application::instance())
 
 #endif //APPLICATION_H

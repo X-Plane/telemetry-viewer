@@ -3,7 +3,7 @@
 //
 
 #include <QApplication>
-#include "settings.h"
+#include "Settings.h"
 
 QSettings open_settings()
 {

@@ -5,23 +5,23 @@
 #ifndef SPIRV_STUDIO_DOCUMENT_WINDOW_H
 #define SPIRV_STUDIO_DOCUMENT_WINDOW_H
 
-#include <ui_document_window.h>
-#include <model/telemetry_document.h>
-#include <model/xplane_installation.h>
+#include <ui_DocumentWindow.h>
+#include <model/TelemetryDocument.h>
+#include <model/XplaneInstallation.h>
 
-class test_runner_dialog;
+class TestRunnerDialog;
 
-class document_window final : public QMainWindow, public Ui::document_window
+class DocumentWindow final : public QMainWindow, public Ui::DocumentWindow
 {
 Q_OBJECT
 public:
-	document_window();
-	~document_window() override;
+	DocumentWindow();
+	~DocumentWindow() override;
 
-	void set_document(telemetry_document *document);
+	void set_document(TelemetryDocument *document);
 	void set_document_by_path(const QString &path);
 
-	void add_document(telemetry_document *document);
+	void add_document(TelemetryDocument *document);
 
 	void restore_state(QSettings &state);
 	void save_state(QSettings &state) const;
@@ -36,14 +36,20 @@ public:
 protected:
 	void closeEvent(QCloseEvent *event) override;
 
-private slots:
-	void open_file();
-	void save_file();
+private Q_SLOTS:
+	[[maybe_unused]] void new_file();
+	[[maybe_unused]] void open_file();
+	[[maybe_unused]] void save_file();
 
-	void run_fps_test();
+	[[maybe_unused]] void run_fps_test();
 
-	void range_changed();
-	void event_range_changed(int index);
+	[[maybe_unused]] void range_changed();
+	[[maybe_unused]] void event_range_changed(int index);
+
+	[[maybe_unused]] void populate_recent_items();
+	[[maybe_unused]] void clear_recent_items();
+
+	[[maybe_unused]] void provider_item_changed(QTreeWidgetItem *item);
 
 private:
 	struct event_range
@@ -54,7 +60,7 @@ private:
 
 	struct additional_document
 	{
-		telemetry_document *document;
+		TelemetryDocument *document;
 		int32_t start_offset;
 		QVector<event_range> event_ranges;
 	};
@@ -65,17 +71,16 @@ private:
 	void set_time_range(int32_t start, int32_t end);
 	void touch_telemetry_file(const QFileInfo &file_info);
 
-	QColor generate_color_for_title(const QString &title) const;
+	QString m_base_dir;
 
-	telemetry_document *m_document;
+	TelemetryDocument *m_document;
 	QVector<additional_document> m_additional_documents;
 	QVector<const telemetry_field *> m_enabled_fields;
 
-	QString m_base_dir;
 	std::vector<std::unique_ptr<QAction>> m_recent_file_actions;
 
 	QVector<event_range> m_event_ranges;
-	QVector<xplane_installation> m_installations;
+	QVector<XplaneInstallation> m_installations;
 };
 
 #endif //SPIRV_STUDIO_DOCUMENT_WINDOW_H

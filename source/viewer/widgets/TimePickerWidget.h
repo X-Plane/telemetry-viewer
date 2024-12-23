@@ -7,12 +7,12 @@
 
 #include <QAbstractSpinBox>
 
-class time_picker_widget : public QAbstractSpinBox
+class TimePickerWidget : public QAbstractSpinBox
 {
 Q_OBJECT
 
 public:
-	time_picker_widget(QWidget *parent = nullptr);
+	TimePickerWidget(QWidget *parent = nullptr);
 
 	QSize sizeHint() const override;
 

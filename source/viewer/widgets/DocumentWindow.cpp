@@ -4,16 +4,16 @@
 
 #include <QString>
 #include <thread>
+#include <telemetry/known_providers.h>
 
-#include "document_window.h"
-#include "test_runner_dialog.h"
-#include "application.h"
+#include "DocumentWindow.h"
+#include "TestRunnerDialog.h"
+#include "Application.h"
 
-#include "utilities/color.h"
-#include "utilities/data_decimator.h"
-#include "utilities/settings.h"
-#include "utilities/performance_calculator.h"
-#include "utilities/providers.h"
+#include "utilities/Color.h"
+#include "utilities/DataDecimator.h"
+#include "utilities/Settings.h"
+#include "utilities/PerformanceCalculator.h"
 
 static QColor get_color_for_telemetry_field(const telemetry_field *field)
 {
@@ -21,48 +21,19 @@ static QColor get_color_for_telemetry_field(const telemetry_field *field)
 }
 
 
-document_window::document_window() :
+DocumentWindow::DocumentWindow() :
 	m_document(nullptr)
 {
 	setupUi(this);
-	setWindowTitle(QString("Telemetry Viewer"));
-
-	m_action_new->setShortcut(QKeySequence::New);
-	m_action_new->setStatusTip("Create a new window");
-	connect(m_action_new, &QAction::triggered, qApp, &application::new_file);
-
-	m_action_open->setShortcut(QKeySequence::Open);
-	m_action_open->setStatusTip("Open a telemetry file");
-	connect(m_action_open, &QAction::triggered, this, &document_window::open_file);
-
-	m_action_save->setShortcut(QKeySequence::Save);
-	m_action_save->setStatusTip("Save the currently loaded telemetry file");
-	connect(m_action_save, &QAction::triggered, this, &document_window::save_file);
-
-	m_action_close->setShortcut(QKeySequence::Close);
-	m_action_close->setStatusTip("Close the telemetry file");
-	connect(m_action_close, &QAction::triggered, this, &document_window::close);
 
 	m_action_exit->setShortcut(QKeySequence::Quit);
 	connect(m_action_exit, &QAction::triggered, qApp, &QApplication::quit);
 
-	connect(m_start_edit, &time_picker_widget::value_changed, this, &document_window::range_changed);
-	connect(m_end_edit, &time_picker_widget::value_changed, this, &document_window::range_changed);
-	connect(m_event_picker, &QComboBox::currentIndexChanged, this, &document_window::event_range_changed);
 	connect(m_mode_selector, &QComboBox::currentIndexChanged, [this](int index) {
-		m_chart_view->set_type((chart_type)index);
+		m_chart_view->set_type((ChartWidget::Type)index);
 	});
 	connect(m_memory_scaling, &QComboBox::currentIndexChanged, [this](int index) {
-		m_chart_view->set_memory_scaling((memory_scaling)index);
-	});
-
-	connect(m_providers_view, &QTreeWidget::itemChanged, [this](QTreeWidgetItem *item) {
-
-		const telemetry_field *field = item->data(0, Qt::UserRole).value<const telemetry_field *>();
-		Q_ASSERT(field);
-
-		set_field_enabled(field, item->checkState(0) == Qt::Checked);
-
+		m_chart_view->set_memory_scaling((ChartWidget::MemoryScaling)index);
 	});
 
 	m_mode_selector->setCurrentIndex((int)m_chart_view->get_type());
@@ -71,7 +42,7 @@ document_window::document_window() :
 	m_splitter->setStretchFactor(0, 3);
 	m_splitter->setStretchFactor(1, 1);
 
-	connect(m_timeline_widget, &timeline_widget::spanFocused, [this](uint64_t id){
+	connect(m_timeline_widget, &TimelineWidget::spanFocused, [this](uint64_t id){
 		auto model = m_timeline_tree->model();
 		auto x = model->match(model->index(0,0, {}), Qt::DisplayRole, QVariant::fromValue(id), 1, Qt::MatchFlag::MatchExactly|Qt::MatchFlag::MatchRecursive);
 		if(!x.empty())
@@ -80,8 +51,6 @@ document_window::document_window() :
 			m_timeline_tree->selectionModel()->select(x.front(), QItemSelectionModel::SelectionFlag::ClearAndSelect|QItemSelectionModel::Rows);
 		}
 	});
-
-	connect(m_run_tests, &QPushButton::pressed, this, &document_window::run_fps_test);
 
 	m_installations = qApp->get_installations();
 
@@ -103,44 +72,53 @@ document_window::document_window() :
 
 	});
 
-	connect(m_menu_recents, &QMenu::aboutToShow, [this]() {
-
-		m_menu_recents->clear();
-		m_recent_file_actions = std::move(qApp->get_recently_opened_files());
-
-		for(auto &action : m_recent_file_actions)
-		{
-			connect(action.get(), &QAction::triggered, [this, action = action.get()] {
-				set_document_by_path(action->data().toString());
-			});
-
-			m_menu_recents->addAction(action.get());
-		}
-
-		if(!m_menu_recents->isEmpty())
-			m_menu_recents->addSeparator();
-
-		m_menu_recents->addAction(m_action_clear_recents);
-
-	});
-
-	connect(m_action_clear_recents, &QAction::triggered, qApp, &application::clear_recently_opened_files);
-
 	statusBar()->showMessage("Ready");
 }
 
-document_window::~document_window()
+DocumentWindow::~DocumentWindow()
 {
 	delete m_document;
 }
 
-void document_window::closeEvent(QCloseEvent *event)
+void DocumentWindow::closeEvent(QCloseEvent *event)
 {
 	qApp->close_document(this);
 }
 
+void DocumentWindow::populate_recent_items()
+{
+	m_menu_recents->clear();
+	m_recent_file_actions = std::move(qApp->get_recently_opened_files());
 
-void document_window::set_field_enabled(const telemetry_field *field, bool enable)
+	for(auto &action : m_recent_file_actions)
+	{
+		connect(action.get(), &QAction::triggered, [this, action = action.get()] {
+			set_document_by_path(action->data().toString());
+		});
+
+		m_menu_recents->addAction(action.get());
+	}
+
+	if(!m_menu_recents->isEmpty())
+		m_menu_recents->addSeparator();
+
+	m_menu_recents->addAction(m_action_clear_recents);
+}
+
+void DocumentWindow::clear_recent_items()
+{
+	qApp->clear_recently_opened_files();
+}
+
+void DocumentWindow::provider_item_changed(QTreeWidgetItem *item)
+{
+	const telemetry_field *field = item->data(0, Qt::UserRole).value<const telemetry_field *>();
+	Q_ASSERT(field);
+
+	set_field_enabled(field, item->checkState(0) == Qt::Checked);
+}
+
+void DocumentWindow::set_field_enabled(const telemetry_field *field, bool enable)
 {
 	QVector<QPair<const telemetry_field *, int32_t>> fields;
 
@@ -187,12 +165,12 @@ void document_window::set_field_enabled(const telemetry_field *field, bool enabl
 	}
 }
 
-bool document_window::can_accept_mime_data(const QMimeData *mime) const
+bool DocumentWindow::can_accept_mime_data(const QMimeData *mime) const
 {
 	return mime->hasUrls() && !mime->urls().isEmpty();
 }
 
-void document_window::dragEnterEvent(QDragEnterEvent *event)
+void DocumentWindow::dragEnterEvent(QDragEnterEvent *event)
 {
 	if(can_accept_mime_data(event->mimeData()))
 	{
@@ -202,7 +180,7 @@ void document_window::dragEnterEvent(QDragEnterEvent *event)
 
 	QMainWindow::dragEnterEvent(event);
 }
-void document_window::dragMoveEvent(QDragMoveEvent *event)
+void DocumentWindow::dragMoveEvent(QDragMoveEvent *event)
 {
 	if(can_accept_mime_data(event->mimeData()))
 	{
@@ -212,11 +190,11 @@ void document_window::dragMoveEvent(QDragMoveEvent *event)
 
 	QMainWindow::dragMoveEvent(event);
 }
-void document_window::dragLeaveEvent(QDragLeaveEvent *event)
+void DocumentWindow::dragLeaveEvent(QDragLeaveEvent *event)
 {
 	event->accept();
 }
-void document_window::dropEvent(QDropEvent *event)
+void DocumentWindow::dropEvent(QDropEvent *event)
 {
 	const QMimeData *mime = event->mimeData();
 
@@ -234,7 +212,7 @@ void document_window::dropEvent(QDropEvent *event)
 		{
 			try
 			{
-				telemetry_document *document = qApp->load_file(url.toLocalFile());
+				TelemetryDocument *document = qApp->load_file(url.toLocalFile());
 				add_document(document);
 			}
 			catch(...)
@@ -265,7 +243,7 @@ void document_window::dropEvent(QDropEvent *event)
 
 
 
-void document_window::clear()
+void DocumentWindow::clear()
 {
 	setWindowFilePath("");
 
@@ -287,11 +265,11 @@ void document_window::clear()
 	m_document = nullptr;
 }
 
-void document_window::set_document_by_path(const QString &path)
+void DocumentWindow::set_document_by_path(const QString &path)
 {
 	try
 	{
-		telemetry_document *document = qApp->load_file(path);
+		TelemetryDocument *document = qApp->load_file(path);
 		set_document(document);
 	}
 	catch(...)
@@ -301,7 +279,7 @@ void document_window::set_document_by_path(const QString &path)
 	}
 }
 
-void document_window::set_document(telemetry_document *document)
+void DocumentWindow::set_document(TelemetryDocument *document)
 {
 	clear();
 
@@ -367,7 +345,7 @@ void document_window::set_document(telemetry_document *document)
 					event_range range;
 					range.start = start + 8.0;
 					range.end = end - 3.0;
-					range.name = title + QString(" (") + time_picker_widget::format_time(range.start) + " - " + time_picker_widget::format_time(range.end) + QString(")");
+					range.name = title + QString(" (") + TimePickerWidget::format_time(range.start) + " - " + TimePickerWidget::format_time(range.end) + QString(")");
 
 					m_event_ranges.push_back(range);
 					m_event_picker->addItem(range.name);
@@ -534,7 +512,7 @@ void document_window::set_document(telemetry_document *document)
 	}
 }
 
-void document_window::add_document(telemetry_document *document)
+void DocumentWindow::add_document(TelemetryDocument *document)
 {
 	additional_document entry;
 	entry.document = document;
@@ -574,7 +552,7 @@ void document_window::add_document(telemetry_document *document)
 				event_range range;
 				range.start = start + 8.0;
 				range.end = end - 3.0;
-				range.name = title + QString(" (") + time_picker_widget::format_time(range.start) + " - " + time_picker_widget::format_time(range.end) + QString(")");
+				range.name = title + QString(" (") + TimePickerWidget::format_time(range.start) + " - " + TimePickerWidget::format_time(range.end) + QString(")");
 
 				ranges.push_back(range);
 			}
@@ -628,7 +606,7 @@ void document_window::add_document(telemetry_document *document)
 }
 
 
-void document_window::restore_state(QSettings &state)
+void DocumentWindow::restore_state(QSettings &state)
 {
 	restoreGeometry(state.value("geometry").toByteArray());
 
@@ -646,7 +624,7 @@ void document_window::restore_state(QSettings &state)
 	}
 }
 
-void document_window::save_state(QSettings &state) const
+void DocumentWindow::save_state(QSettings &state) const
 {
 	QString path = windowFilePath();
 
@@ -660,7 +638,7 @@ void document_window::save_state(QSettings &state) const
 	}
 }
 
- void document_window::set_time_range(int32_t start, int32_t end)
+ void DocumentWindow::set_time_range(int32_t start, int32_t end)
 {
 	m_chart_view->set_range(start, end);
 
@@ -685,7 +663,7 @@ void document_window::save_state(QSettings &state) const
 		try
 		{
 			auto &field = provider_timing::get_field(m_document->get_data(), field_id);
-			performance_calculator perf(field, start, end);
+			PerformanceCalculator perf(field, start, end);
 
 			QBarSet *set = new QBarSet(QString::fromStdString(field.get_title()));
 			set->setColor(get_color_for_telemetry_field(&field));
@@ -745,8 +723,12 @@ void document_window::save_state(QSettings &state) const
 	m_statistics_view->setChart(chart);
 }
 
+void DocumentWindow::new_file()
+{
+	qApp->new_file();
+}
 
-void document_window::open_file()
+void DocumentWindow::open_file()
 {
 	QString base_path = m_base_dir;
 
@@ -763,9 +745,9 @@ void document_window::open_file()
 	}
 }
 
-void document_window::save_file()
+void DocumentWindow::save_file()
 {
-	if(!m_document->has_data())
+	if(!m_document || !m_document->has_data())
 		return;
 
 	QString base_path = m_base_dir;
@@ -779,7 +761,7 @@ void document_window::save_file()
 		m_document->save(path);
 }
 
-void document_window::touch_telemetry_file(const QFileInfo &file_info)
+void DocumentWindow::touch_telemetry_file(const QFileInfo &file_info)
 {
 	QString file_path = file_info.filePath();
 	QString file_name = file_info.fileName();
@@ -789,10 +771,10 @@ void document_window::touch_telemetry_file(const QFileInfo &file_info)
 	m_base_dir = file_path;
 }
 
-void document_window::run_fps_test()
+void DocumentWindow::run_fps_test()
 {
-	xplane_installation *installation = &m_installations[m_installation_selector->currentIndex()];
-	test_runner_dialog runner(installation);
+	XplaneInstallation *installation = &m_installations[m_installation_selector->currentIndex()];
+	TestRunnerDialog runner(installation);
 
 	if(runner.exec())
 	{
@@ -830,11 +812,11 @@ void document_window::run_fps_test()
 }
 
 
-void document_window::range_changed()
+void DocumentWindow::range_changed()
 {
 	set_time_range(m_start_edit->get_value(), m_end_edit->get_value());
 }
-void document_window::event_range_changed(int index)
+void DocumentWindow::event_range_changed(int index)
 {
 	if(index == -1)
 		return;

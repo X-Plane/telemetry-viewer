@@ -12,6 +12,7 @@ set(PUBLIC_HEADERS
 		telemetry/container.h
 		telemetry/data.h
 		telemetry/event.h
+		telemetry/known_providers.h
 		telemetry/parser.h
 		telemetry/provider.h
 		telemetry/statistic.h)
