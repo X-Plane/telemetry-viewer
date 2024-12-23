@@ -4,9 +4,9 @@
 
 #include <QLineEdit>
 #include <QStringBuilder>
-#include "time_picker_widget.h"
+#include "TimePickerWidget.h"
 
-time_picker_widget::time_picker_widget(QWidget *parent) :
+TimePickerWidget::TimePickerWidget(QWidget *parent) :
 	QAbstractSpinBox(parent),
 	m_start(0),
 	m_end(1),
@@ -14,15 +14,15 @@ time_picker_widget::time_picker_widget(QWidget *parent) :
 {
 	format_value();
 
-	connect(this, &QAbstractSpinBox::editingFinished, this, &time_picker_widget::interpret_text);
+	connect(this, &QAbstractSpinBox::editingFinished, this, &TimePickerWidget::interpret_text);
 }
 
-QSize time_picker_widget::sizeHint() const
+QSize TimePickerWidget::sizeHint() const
 {
 	return lineEdit()->sizeHint();
 }
 
-QString time_picker_widget::format_time(int32_t time)
+QString TimePickerWidget::format_time(int32_t time)
 {
 	int32_t hour = time / 60 / 60;
 	int32_t minute = (time / 60) % 60;
@@ -33,12 +33,12 @@ QString time_picker_widget::format_time(int32_t time)
 	return value % QString::asprintf("%02i", minute) % ":" % QString::asprintf("%02i", seconds);
 }
 
-void time_picker_widget::format_value() const
+void TimePickerWidget::format_value() const
 {
 	lineEdit()->setText(format_time(m_value));
 }
 
-void time_picker_widget::interpret_text()
+void TimePickerWidget::interpret_text()
 {
 	int32_t value = 0;
 	int32_t shifts = 0;
@@ -84,7 +84,7 @@ void time_picker_widget::interpret_text()
 }
 
 
-QAbstractSpinBox::StepEnabled time_picker_widget::stepEnabled() const
+QAbstractSpinBox::StepEnabled TimePickerWidget::stepEnabled() const
 {
 	StepEnabled enabled = StepNone;
 
@@ -96,7 +96,7 @@ QAbstractSpinBox::StepEnabled time_picker_widget::stepEnabled() const
 	return enabled;
 }
 
-void time_picker_widget::stepBy(int steps)
+void TimePickerWidget::stepBy(int steps)
 {
 	m_value += steps;
 	m_value = std::min(m_end, std::max(m_start, m_value));
@@ -106,7 +106,7 @@ void time_picker_widget::stepBy(int steps)
 }
 
 
-void time_picker_widget::set_range(int32_t start, int32_t end)
+void TimePickerWidget::set_range(int32_t start, int32_t end)
 {
 	m_start = start;
 	m_end = end;
@@ -120,7 +120,7 @@ void time_picker_widget::set_range(int32_t start, int32_t end)
 		emit value_changed(m_value);
 	}
 }
-void time_picker_widget::set_value(int32_t value)
+void TimePickerWidget::set_value(int32_t value)
 {
 	value = std::min(m_end, std::max(m_start, value));
 

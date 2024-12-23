@@ -5,18 +5,18 @@
 #ifndef TEST_RUNNER_DIALOG_H
 #define TEST_RUNNER_DIALOG_H
 
-#include <ui_test_runner_dialog.h>
+#include <ui_TestRunnerDialog.h>
 
-class xplane_installation;
+class XplaneInstallation;
 
-class test_runner_dialog final : public QDialog, public Ui::test_runner_dialog
+class TestRunnerDialog final : public QDialog, public Ui::TestRunnerDialog
 {
 Q_OBJECT
 
 public:
-	test_runner_dialog(xplane_installation *installation);
+	TestRunnerDialog(XplaneInstallation *installation);
 
-	xplane_installation *get_installation() const { return m_installation; }
+	XplaneInstallation *get_installation() const { return m_installation; }
 
 	QString get_executable() const;
 	QStringList get_arguments(const QString &telemetry_path, bool escape_paths) const;
@@ -30,7 +30,7 @@ private:
 	void load_settings();
 	void save_settings();
 
-	xplane_installation *m_installation;
+	XplaneInstallation *m_installation;
 
 	QVector<QString> m_replay_files;
 	QVector<QString> m_executables;

@@ -4,12 +4,12 @@
 
 #include <QDir>
 #include <QClipboard>
-#include <model/xplane_installation.h>
-#include <utilities/settings.h>
+#include <model/XplaneInstallation.h>
+#include <utilities/Settings.h>
 
-#include "test_runner_dialog.h"
+#include "TestRunnerDialog.h"
 
-test_runner_dialog::test_runner_dialog(xplane_installation *installation) :
+TestRunnerDialog::TestRunnerDialog(XplaneInstallation *installation) :
 	m_installation(installation)
 {
 	setupUi(this);
@@ -58,13 +58,13 @@ test_runner_dialog::test_runner_dialog(xplane_installation *installation) :
 
 	load_settings();
 
-	connect(m_executable, qOverload<int>(&QComboBox::currentIndexChanged), this, &test_runner_dialog::combo_box_selection_changed);
-	connect(m_replay_file, qOverload<int>(&QComboBox::currentIndexChanged), this, &test_runner_dialog::combo_box_selection_changed);
-	connect(m_weather_preset, qOverload<int>(&QComboBox::currentIndexChanged), this, &test_runner_dialog::combo_box_selection_changed);
-	connect(m_settings_preset, qOverload<int>(&QComboBox::currentIndexChanged), this, &test_runner_dialog::combo_box_selection_changed);
-	connect(m_resolution_preset, qOverload<int>(&QComboBox::currentIndexChanged), this, &test_runner_dialog::combo_box_selection_changed);
+	connect(m_executable, qOverload<int>(&QComboBox::currentIndexChanged), this, &TestRunnerDialog::combo_box_selection_changed);
+	connect(m_replay_file, qOverload<int>(&QComboBox::currentIndexChanged), this, &TestRunnerDialog::combo_box_selection_changed);
+	connect(m_weather_preset, qOverload<int>(&QComboBox::currentIndexChanged), this, &TestRunnerDialog::combo_box_selection_changed);
+	connect(m_settings_preset, qOverload<int>(&QComboBox::currentIndexChanged), this, &TestRunnerDialog::combo_box_selection_changed);
+	connect(m_resolution_preset, qOverload<int>(&QComboBox::currentIndexChanged), this, &TestRunnerDialog::combo_box_selection_changed);
 
-	connect(m_additional_commands, &QLineEdit::textChanged, this, &test_runner_dialog::line_text_changed);
+	connect(m_additional_commands, &QLineEdit::textChanged, this, &TestRunnerDialog::line_text_changed);
 
 	connect(m_copy_to_clipboard, &QAbstractButton::pressed, [this] {
 
@@ -75,7 +75,7 @@ test_runner_dialog::test_runner_dialog(xplane_installation *installation) :
 	});
 }
 
-void test_runner_dialog::load_settings()
+void TestRunnerDialog::load_settings()
 {
 	QSettings settings = open_settings();
 
@@ -135,7 +135,7 @@ void test_runner_dialog::load_settings()
 	settings.endGroup();
 }
 
-void test_runner_dialog::save_settings()
+void TestRunnerDialog::save_settings()
 {
 	QSettings settings = open_settings();
 
@@ -156,17 +156,17 @@ void test_runner_dialog::save_settings()
 
 
 
-void test_runner_dialog::combo_box_selection_changed(int index)
+void TestRunnerDialog::combo_box_selection_changed(int index)
 {
 	save_settings();
 }
-void test_runner_dialog::line_text_changed(const QString &text)
+void TestRunnerDialog::line_text_changed(const QString &text)
 {
 	save_settings();
 }
 
 
-uint32_t test_runner_dialog::get_fps_test() const
+uint32_t TestRunnerDialog::get_fps_test() const
 {
 	const uint32_t test = m_settings_preset->currentIndex() + 1;
 	const uint32_t weather = m_weather_preset->currentIndex() * 10;
@@ -175,12 +175,12 @@ uint32_t test_runner_dialog::get_fps_test() const
 	return test + weather + tod;
 }
 
-QString test_runner_dialog::get_executable() const
+QString TestRunnerDialog::get_executable() const
 {
 	return m_installation->get_path() + "/" + m_executables[m_executable->currentIndex()];
 }
 
-QStringList test_runner_dialog::get_arguments(const QString &telemetry_path, bool escape_paths) const
+QStringList TestRunnerDialog::get_arguments(const QString &telemetry_path, bool escape_paths) const
 {
 	QStringList result;
 	result.push_back("--weather_seed=1");

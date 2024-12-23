@@ -8,10 +8,10 @@
 #include <QString>
 #include <QVector>
 
-class xplane_installation
+class XplaneInstallation
 {
 public:
-	xplane_installation(const QString &path);
+	XplaneInstallation(const QString &path);
 
 	const QString &get_path() const { return m_path;}
 

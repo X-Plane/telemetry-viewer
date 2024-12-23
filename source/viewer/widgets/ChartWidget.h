@@ -9,26 +9,26 @@
 #include <QChartView>
 #include <telemetry/provider.h>
 
-enum class chart_type
-{
-	line,
-	boxplot
-};
-
-enum class memory_scaling
-{
-	bytes,
-	kilobytes,
-	megabytes,
-	gigabytes,
-};
-
-class chart_widget : public QChartView
+class ChartWidget : public QChartView
 {
 Q_OBJECT
 public:
-	chart_widget(QWidget *parent = nullptr);
-	~chart_widget() override;
+	enum class Type : uint8_t
+	{
+		Line,
+		Boxplot
+	};
+
+	enum class MemoryScaling : uint8_t
+	{
+		Bytes,
+		Kilobytes,
+		Megabytes,
+		Gigabytes,
+	};
+
+	ChartWidget(QWidget *parent = nullptr);
+	~ChartWidget() override;
 
 	void add_data(const telemetry_field *field, QColor color);
 	void remove_data(const telemetry_field *field);
@@ -38,11 +38,11 @@ public:
 
 	void clear();
 
-	void set_memory_scaling(memory_scaling scaling);
-	memory_scaling get_memory_scaling() const { return m_memory_scaling; }
+	void set_memory_scaling(MemoryScaling scaling);
+	MemoryScaling get_memory_scaling() const { return m_memory_scaling; }
 
-	void set_type(chart_type type);
-	chart_type get_type() const { return m_type; }
+	void set_type(Type type);
+	Type get_type() const { return m_type; }
 
 	void set_range(int32_t start, int32_t end);
 
@@ -96,8 +96,8 @@ private:
 
 	void rescale_axes();
 
-	chart_type m_type;
-	memory_scaling m_memory_scaling;
+	Type m_type;
+	MemoryScaling m_memory_scaling;
 
 	int32_t m_start;
 	int32_t m_end;

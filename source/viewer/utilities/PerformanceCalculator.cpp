@@ -4,9 +4,9 @@
 
 #include <QtGlobal>
 #include <algorithm>
-#include "performance_calculator.h"
+#include "PerformanceCalculator.h"
 
-performance_calculator::performance_calculator(const telemetry_field &field, uint32_t start, uint32_t end)
+PerformanceCalculator::PerformanceCalculator(const telemetry_field &field, uint32_t start, uint32_t end)
 {
 	m_samples = field.get_data_points_in_range(start, end);
 
@@ -15,7 +15,7 @@ performance_calculator::performance_calculator(const telemetry_field &field, uin
 	});
 }
 
-double performance_calculator::calculate_average() const
+double PerformanceCalculator::calculate_average() const
 {
 	if(m_samples.empty())
 		return 0.0;
@@ -28,7 +28,7 @@ double performance_calculator::calculate_average() const
 	return sum / m_samples.size();
 }
 
-double performance_calculator::calculate_percentile(float percentile) const
+double PerformanceCalculator::calculate_percentile(float percentile) const
 {
 	if(m_samples.empty())
 		return 0.0;
@@ -53,7 +53,7 @@ double performance_calculator::calculate_percentile(float percentile) const
 	return m_samples.back().value.get<double>();
 }
 
-double performance_calculator::get_median_value(size_t start, size_t end) const
+double PerformanceCalculator::get_median_value(size_t start, size_t end) const
 {
 	Q_ASSERT(start < m_samples.size());
 	Q_ASSERT(end <= m_samples.size());

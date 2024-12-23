@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>document_window</class>
- <widget class="QMainWindow" name="document_window">
+ <class>DocumentWindow</class>
+ <widget class="QMainWindow" name="DocumentWindow">
   <property name="geometry">
    <rect>
     <x>0</x>
@@ -11,7 +11,10 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>MainWindow</string>
+   <string>Telemetry Viewer</string>
+  </property>
+  <property name="unifiedTitleAndToolBarOnMac">
+   <bool>true</bool>
   </property>
   <widget class="QWidget" name="m_root_widget">
    <layout class="QHBoxLayout" name="horizontalLayout_3">
@@ -89,13 +92,6 @@
             <number>0</number>
            </property>
            <item>
-            <widget class="QPushButton" name="m_run_tests">
-             <property name="text">
-              <string>Run FPS Test</string>
-             </property>
-            </widget>
-           </item>
-           <item>
             <spacer name="horizontalSpacer">
              <property name="orientation">
               <enum>Qt::Orientation::Horizontal</enum>
@@ -170,7 +166,7 @@
            </attribute>
            <layout class="QVBoxLayout" name="verticalLayout">
             <item>
-             <widget class="chart_widget" name="m_chart_view"/>
+             <widget class="ChartWidget" name="m_chart_view"/>
             </item>
            </layout>
           </widget>
@@ -190,7 +186,7 @@
               <property name="orientation">
                <enum>Qt::Orientation::Vertical</enum>
               </property>
-              <widget class="timeline_widget" name="m_timeline_widget">
+              <widget class="TimelineWidget" name="m_timeline_widget">
                <property name="sizePolicy">
                 <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
                  <horstretch>0</horstretch>
@@ -272,6 +268,19 @@
             </widget>
            </item>
            <item>
+            <spacer name="horizontalSpacer_3">
+             <property name="orientation">
+              <enum>Qt::Orientation::Horizontal</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>40</width>
+               <height>20</height>
+              </size>
+             </property>
+            </spacer>
+           </item>
+           <item>
             <spacer name="horizontalSpacer_4">
              <property name="orientation">
               <enum>Qt::Orientation::Horizontal</enum>
@@ -295,7 +304,7 @@
             </widget>
            </item>
            <item>
-            <widget class="time_picker_widget" name="m_start_edit" native="true">
+            <widget class="TimePickerWidget" name="m_start_edit" native="true">
              <property name="minimumSize">
               <size>
                <width>80</width>
@@ -328,7 +337,7 @@
             </widget>
            </item>
            <item>
-            <widget class="time_picker_widget" name="m_end_edit" native="true">
+            <widget class="TimePickerWidget" name="m_end_edit" native="true">
              <property name="minimumSize">
               <size>
                <width>80</width>
@@ -336,19 +345,6 @@
               </size>
              </property>
             </widget>
-           </item>
-           <item>
-            <spacer name="horizontalSpacer_3">
-             <property name="orientation">
-              <enum>Qt::Orientation::Horizontal</enum>
-             </property>
-             <property name="sizeHint" stdset="0">
-              <size>
-               <width>40</width>
-               <height>20</height>
-              </size>
-             </property>
-            </spacer>
            </item>
           </layout>
          </widget>
@@ -429,7 +425,7 @@
      <x>0</x>
      <y>0</y>
      <width>1804</width>
-     <height>33</height>
+     <height>24</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -468,9 +464,25 @@
    <addaction name="menuHelp"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
+  <widget class="QToolBar" name="toolBar">
+   <property name="windowTitle">
+    <string>toolBar</string>
+   </property>
+   <attribute name="toolBarArea">
+    <enum>TopToolBarArea</enum>
+   </attribute>
+   <attribute name="toolBarBreak">
+    <bool>false</bool>
+   </attribute>
+   <addaction name="m_run_fps_test"/>
+   <addaction name="separator"/>
+  </widget>
   <action name="actionAbout">
    <property name="text">
     <string>About</string>
+   </property>
+   <property name="menuRole">
+    <enum>QAction::MenuRole::AboutRole</enum>
    </property>
   </action>
   <action name="m_action_open">
@@ -511,18 +523,32 @@
     <string>Close Trace</string>
    </property>
   </action>
+  <action name="m_run_fps_test">
+   <property name="icon">
+    <iconset theme="QIcon::ThemeIcon::MediaPlaybackStart"/>
+   </property>
+   <property name="text">
+    <string>Run FPS Test</string>
+   </property>
+   <property name="menuRole">
+    <enum>QAction::MenuRole::NoRole</enum>
+   </property>
+  </action>
  </widget>
  <customwidgets>
   <customwidget>
-   <class>time_picker_widget</class>
+   <class>TimePickerWidget</class>
    <extends>QWidget</extends>
-   <header>widgets/time_picker_widget.h</header>
+   <header>widgets/TimePickerWidget.h</header>
    <container>1</container>
+   <slots>
+    <signal>value_changed(int)</signal>
+   </slots>
   </customwidget>
   <customwidget>
-   <class>timeline_widget</class>
+   <class>TimelineWidget</class>
    <extends>QGraphicsView</extends>
-   <header>widgets/timeline_widget.h</header>
+   <header>widgets/TimelineWidget.h</header>
    <slots>
     <slot>zoomIn()</slot>
     <slot>zoomOut()</slot>
@@ -534,11 +560,183 @@
    <header location="global">QtCharts/QtCharts</header>
   </customwidget>
   <customwidget>
-   <class>chart_widget</class>
+   <class>ChartWidget</class>
    <extends>QGraphicsView</extends>
-   <header>widgets/chart_widget.h</header>
+   <header>widgets/ChartWidget.h</header>
   </customwidget>
  </customwidgets>
  <resources/>
- <connections/>
+ <connections>
+  <connection>
+   <sender>m_run_fps_test</sender>
+   <signal>triggered()</signal>
+   <receiver>DocumentWindow</receiver>
+   <slot>run_fps_test()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>901</x>
+     <y>551</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>m_action_open</sender>
+   <signal>triggered()</signal>
+   <receiver>DocumentWindow</receiver>
+   <slot>open_file()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>901</x>
+     <y>551</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>m_action_save</sender>
+   <signal>triggered()</signal>
+   <receiver>DocumentWindow</receiver>
+   <slot>save_file()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>901</x>
+     <y>551</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>m_start_edit</sender>
+   <signal>value_changed(int)</signal>
+   <receiver>DocumentWindow</receiver>
+   <slot>range_changed()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>1110</x>
+     <y>1059</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>901</x>
+     <y>551</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>m_end_edit</sender>
+   <signal>value_changed(int)</signal>
+   <receiver>DocumentWindow</receiver>
+   <slot>range_changed()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>1265</x>
+     <y>1059</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>901</x>
+     <y>551</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>m_event_picker</sender>
+   <signal>currentIndexChanged(int)</signal>
+   <receiver>DocumentWindow</receiver>
+   <slot>event_range_changed(int)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>177</x>
+     <y>1060</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>901</x>
+     <y>551</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>m_action_close</sender>
+   <signal>triggered()</signal>
+   <receiver>DocumentWindow</receiver>
+   <slot>close()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>901</x>
+     <y>551</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>m_providers_view</sender>
+   <signal>itemChanged(QTreeWidgetItem*,int)</signal>
+   <receiver>DocumentWindow</receiver>
+   <slot>provider_item_changed(QTreeWidgetItem*)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>1563</x>
+     <y>572</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>901</x>
+     <y>551</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>m_action_new</sender>
+   <signal>triggered()</signal>
+   <receiver>DocumentWindow</receiver>
+   <slot>new_file()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>901</x>
+     <y>551</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>m_action_clear_recents</sender>
+   <signal>triggered()</signal>
+   <receiver>DocumentWindow</receiver>
+   <slot>clear_recent_items()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>901</x>
+     <y>551</y>
+    </hint>
+   </hints>
+  </connection>
+ </connections>
+ <slots>
+  <slot>run_fps_test()</slot>
+  <slot>open_file()</slot>
+  <slot>save_file()</slot>
+  <slot>range_changed()</slot>
+  <slot>event_range_changed(int)</slot>
+  <slot>populate_recent_items()</slot>
+  <slot>provider_item_changed(QTreeWidgetItem*)</slot>
+  <slot>clear_recent_items()</slot>
+  <slot>new_file()</slot>
+ </slots>
 </ui>

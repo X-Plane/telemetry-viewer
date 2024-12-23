@@ -4,8 +4,8 @@
 
 #include <QPalette>
 #include <QStyleFactory>
-#include "application.h"
-#include "widgets/document_window.h"
+#include "Application.h"
+#include "widgets/DocumentWindow.h"
 
 #define MAX_RECENTLY_OPENED 5
 
@@ -34,12 +34,12 @@ QString apply_dark_theme()
 	return "QToolTip { color: #ffffff; background-color: #2a82da; border: 1px solid white; }";
 }
 
-QString application::get_settings_path()
+QString Application::get_settings_path()
 {
 	return applicationDirPath() + "/settings.ini";
 }
 
-application::application(int &argc, char **argv) :
+Application::Application(int &argc, char **argv) :
 	QApplication(argc, argv),
 	m_settings(get_settings_path(), QSettings::IniFormat)
 {
@@ -47,7 +47,7 @@ application::application(int &argc, char **argv) :
 		const int count = m_settings.beginReadArray("documents");
 		if(count == 0)
 		{
-			document_window *window = new document_window();
+			DocumentWindow *window = new DocumentWindow();
 			window->show();
 
 			m_document_windows.push_back(window);
@@ -60,7 +60,7 @@ application::application(int &argc, char **argv) :
 
 				try
 				{
-					document_window *window = new document_window();
+					DocumentWindow *window = new DocumentWindow();
 					window->restore_state(m_settings);
 					window->show();
 
@@ -92,7 +92,7 @@ application::application(int &argc, char **argv) :
 	}
 }
 
-application::~application()
+Application::~Application()
 {
 	{
 		m_settings.beginWriteArray("documents");
@@ -123,20 +123,20 @@ application::~application()
 	}
 }
 
-void application::new_file()
+void Application::new_file()
 {
-	document_window *window = new document_window();
+	DocumentWindow *window = new DocumentWindow();
 	window->show();
 
 	m_document_windows.push_back(window);
 }
-void application::open_file(const QString &path)
+void Application::open_file(const QString &path)
 {
 	try
 	{
-		telemetry_document *document = load_file(path);
+		TelemetryDocument *document = load_file(path);
 
-		document_window *window = new document_window();
+		DocumentWindow *window = new DocumentWindow();
 		window->show();
 		window->set_document(document);
 
@@ -147,7 +147,7 @@ void application::open_file(const QString &path)
 		// TODO: Show an error pop up here
 	}
 }
-void application::close_document(document_window *window)
+void Application::close_document(DocumentWindow *window)
 {
 	// Last window
 	if(m_document_windows.size() == 1)
@@ -164,9 +164,9 @@ void application::close_document(document_window *window)
 }
 
 
-telemetry_document *application::load_file(const QString &path)
+TelemetryDocument *Application::load_file(const QString &path)
 {
-	telemetry_document *document = telemetry_document::load_file(path);
+	TelemetryDocument *document = TelemetryDocument::load_file(path);
 	if(document)
 	{
 		QFileInfo file(path);
@@ -195,7 +195,7 @@ telemetry_document *application::load_file(const QString &path)
 	return document;
 }
 
-std::vector<std::unique_ptr<QAction>> application::get_recently_opened_files()
+std::vector<std::unique_ptr<QAction>> Application::get_recently_opened_files()
 {
 	std::vector<std::unique_ptr<QAction>> result;
 
@@ -214,13 +214,13 @@ std::vector<std::unique_ptr<QAction>> application::get_recently_opened_files()
 	return result;
 }
 
-void application::clear_recently_opened_files()
+void Application::clear_recently_opened_files()
 {
 	m_recently_opened.clear();
 }
 
 
-QVector<xplane_installation> application::get_installations() const
+QVector<XplaneInstallation> Application::get_installations() const
 {
 	const QString install_file_name("x-plane_install_12.txt");
 
@@ -248,7 +248,7 @@ QVector<xplane_installation> application::get_installations() const
 		return {};
 	}
 
-	QVector<xplane_installation> installations;
+	QVector<XplaneInstallation> installations;
 
 	const size_t length = file.bytesAvailable();
 
@@ -272,7 +272,7 @@ QVector<xplane_installation> application::get_installations() const
 
 				if(path_info.exists() && path_info.isDir())
 				{
-					xplane_installation install(install_path);
+					XplaneInstallation install(install_path);
 					installations.push_back(std::move(install));
 				}
 			}
@@ -290,7 +290,7 @@ QVector<xplane_installation> application::get_installations() const
 
 
 
-int application::run(int &argc, char **argv)
+int Application::run(int &argc, char **argv)
 {
 	setApplicationName("Telemetry Viewer");
 	setOrganizationName("Laminar Research");
@@ -299,7 +299,7 @@ int application::run(int &argc, char **argv)
 #if !LIN
 	QString style_sheet = apply_dark_theme();
 
-	application app(argc, argv);
+	Application app(argc, argv);
 	app.setStyleSheet(style_sheet);
 #else
 	QApplication::setStyle(QStyleFactory::create("Fusion"));

@@ -2,7 +2,7 @@
 // Created by devans on 05/08/23.
 //
 
-#include "timeline_widget.h"
+#include "TimelineWidget.h"
 
 #include <QGraphicsTextItem>
 #include <QGraphicsProxyWidget>
@@ -15,7 +15,7 @@
 constexpr double k_seconds_to_units = 1000.0;
 constexpr double seconds_to_ms(double sec) { return sec * k_seconds_to_units; }
 
-timeline_span_item::timeline_span_item(const QPalette& p, const telemetry_event& span, QGraphicsItem* parent)
+TimelineSpanItem::TimelineSpanItem(const QPalette& p, const telemetry_event& span, QGraphicsItem* parent)
 	: QGraphicsItem(parent)
 	, m_span(span)
 {
@@ -61,28 +61,28 @@ timeline_span_item::timeline_span_item(const QPalette& p, const telemetry_event&
 
 	for (auto& child : span.get_children())
 	{
-		m_span_groups.push_back(new timeline_span_item(p, child, this));
-		connect(m_span_groups.back(), &timeline_span_item::reflowed, [this]() { reflow(); });
+		m_span_groups.push_back(new TimelineSpanItem(p, child, this));
+		connect(m_span_groups.back(), &TimelineSpanItem::reflowed, [this]() { reflow(); });
 	}
 
-	std::sort(m_span_groups.begin(), m_span_groups.end(), [](timeline_span_item* a, timeline_span_item* b) {
+	std::sort(m_span_groups.begin(), m_span_groups.end(), [](TimelineSpanItem* a, TimelineSpanItem* b) {
 		return a->m_span.get_start() < b->m_span.get_start();
 	});
 
 	collapse();
 }
 
-QRectF timeline_span_item::boundingRect() const
+QRectF TimelineSpanItem::boundingRect() const
 {
 	return {seconds_to_ms(m_span.get_start()), 0.0, seconds_to_ms(m_span.get_duration()), 20.0 };
 }
 
-void timeline_span_item::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget)
+void TimelineSpanItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget)
 {
 
 }
 
-void timeline_span_item::collapse()
+void TimelineSpanItem::collapse()
 {
 	for (auto& g : m_span_groups)
 	{
@@ -91,7 +91,7 @@ void timeline_span_item::collapse()
 	reflow();
 }
 
-void timeline_span_item::expand()
+void TimelineSpanItem::expand()
 {
 	for (auto& g : m_span_groups)
 	{
@@ -100,7 +100,7 @@ void timeline_span_item::expand()
 	reflow();
 }
 
-void timeline_span_item::contextMenuEvent(QGraphicsSceneContextMenuEvent* event)
+void TimelineSpanItem::contextMenuEvent(QGraphicsSceneContextMenuEvent* event)
 {
 	QMenu menu;
 	menu.addAction(QString("%1").arg(m_span.get_id()));
@@ -114,7 +114,7 @@ void timeline_span_item::contextMenuEvent(QGraphicsSceneContextMenuEvent* event)
 	menu.exec(event->screenPos());
 }
 
-void timeline_span_item::reflow()
+void TimelineSpanItem::reflow()
 {
 	qreal h = 20.f;
 	for (auto& g : m_span_groups)
@@ -132,15 +132,15 @@ void timeline_span_item::reflow()
 	emit reflowed();
 }
 
-timeline_widget::timeline_widget(QWidget *parent)
+TimelineWidget::TimelineWidget(QWidget *parent)
 		: QGraphicsView(parent)
 {
 	setTransformationAnchor(AnchorUnderMouse);
 
-	connect(horizontalScrollBar(), &QScrollBar::valueChanged, this, &timeline_widget::viewportChange);
-	connect(horizontalScrollBar(), &QScrollBar::rangeChanged, this, &timeline_widget::viewportChange);
-	connect(verticalScrollBar(), &QScrollBar::valueChanged, this, &timeline_widget::viewportChange);
-	connect(verticalScrollBar(), &QScrollBar::rangeChanged, this, &timeline_widget::viewportChange);
+	connect(horizontalScrollBar(), &QScrollBar::valueChanged, this, &TimelineWidget::viewportChange);
+	connect(horizontalScrollBar(), &QScrollBar::rangeChanged, this, &TimelineWidget::viewportChange);
+	connect(verticalScrollBar(), &QScrollBar::valueChanged, this, &TimelineWidget::viewportChange);
+	connect(verticalScrollBar(), &QScrollBar::rangeChanged, this, &TimelineWidget::viewportChange);
 
 	connect(&scene, &QGraphicsScene::selectionChanged, [this](){
 		auto items = this->scene.selectedItems();
@@ -149,7 +149,7 @@ timeline_widget::timeline_widget(QWidget *parent)
 	});
 }
 
-void timeline_widget::setTimelineSpans(const std::vector<telemetry_event> &spans)
+void TimelineWidget::setTimelineSpans(const std::vector<telemetry_event> &spans)
 {
 	double min_time = std::numeric_limits<float>::max();
 	double max_time = std::numeric_limits<float>::lowest();
@@ -157,8 +157,8 @@ void timeline_widget::setTimelineSpans(const std::vector<telemetry_event> &spans
 	{
 		min_time = std::min(min_time, s.get_duration());
 		max_time = std::max(max_time, s.get_duration());
-		m_span_groups.append(new timeline_span_item(scene.palette(), s, nullptr));
-		connect(m_span_groups.back(), &timeline_span_item::reflowed, this, &timeline_widget::reflowTimeline);
+		m_span_groups.append(new TimelineSpanItem(scene.palette(), s, nullptr));
+		connect(m_span_groups.back(), &TimelineSpanItem::reflowed, this, &TimelineWidget::reflowTimeline);
 		scene.addItem(m_span_groups.back());
 	}
 
@@ -174,7 +174,7 @@ void timeline_widget::setTimelineSpans(const std::vector<telemetry_event> &spans
 	ensureVisible(timelineBounds);
 }
 
-void timeline_widget::reflowTimeline()
+void TimelineWidget::reflowTimeline()
 {
 	qreal h = 0;
 	for (auto& g : m_span_groups)
@@ -185,7 +185,7 @@ void timeline_widget::reflowTimeline()
 	setSceneRect(scene.itemsBoundingRect());
 }
 
-void timeline_widget::keyPressEvent(QKeyEvent *event)
+void TimelineWidget::keyPressEvent(QKeyEvent *event)
 {
 	switch (event->key())
 	{
@@ -198,7 +198,7 @@ void timeline_widget::keyPressEvent(QKeyEvent *event)
 	}
 }
 
-void timeline_widget::keyReleaseEvent(QKeyEvent *event)
+void TimelineWidget::keyReleaseEvent(QKeyEvent *event)
 {
 	switch (event->key())
 	{
@@ -211,7 +211,7 @@ void timeline_widget::keyReleaseEvent(QKeyEvent *event)
 	}
 }
 
-void timeline_widget::wheelEvent(QWheelEvent *e)
+void TimelineWidget::wheelEvent(QWheelEvent *e)
 {
 	if ((e->modifiers() & Qt::KeyboardModifier::ShiftModifier) != 0)
 	{
@@ -224,7 +224,7 @@ void timeline_widget::wheelEvent(QWheelEvent *e)
 	}
 }
 
-void timeline_widget::drawBackground(QPainter *painter, const QRectF &view)
+void TimelineWidget::drawBackground(QPainter *painter, const QRectF &view)
 {
 	auto view_size = width();
 	auto scene_view_left = mapToScene(0, 0).x();
@@ -248,7 +248,7 @@ void timeline_widget::drawBackground(QPainter *painter, const QRectF &view)
 	}
 }
 
-void timeline_widget::changeZoom(float scale)
+void TimelineWidget::changeZoom(float scale)
 {
 	m_time_scale = scale;
 	qreal effective_scale = std::pow(qreal(2), (scale - 250) / qreal(50));
@@ -257,6 +257,6 @@ void timeline_widget::changeZoom(float scale)
 	setTransform(matrix);
 }
 
-void timeline_widget::viewportChange()
+void TimelineWidget::viewportChange()
 {
 }
