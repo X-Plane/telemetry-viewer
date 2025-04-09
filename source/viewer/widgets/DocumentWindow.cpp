@@ -381,7 +381,10 @@ void DocumentWindow::set_document(TelemetryDocument *document)
 
 				for(auto &field: provider.get_fields())
 				{
-					if(field.empty())
+					const telemetry_type type = field.get_type();
+					const bool can_chart = !(type == telemetry_type::string || type == telemetry_type::vec2 || type == telemetry_type::dvec2);
+
+					if(field.empty() || !can_chart)
 						continue;
 
 					const QString title = QString::fromStdString(field.get_title());
