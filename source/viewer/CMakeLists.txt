@@ -35,6 +35,7 @@ set(SOURCES
 		utilities/DataDecimator.h
 		utilities/PerformanceCalculator.cpp
 		utilities/PerformanceCalculator.h
+		utilities/RunningAverage.h
 		utilities/Settings.cpp
 		utilities/Settings.h
 		widgets/ChartWidget.cpp

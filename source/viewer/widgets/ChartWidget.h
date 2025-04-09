@@ -16,6 +16,7 @@ public:
 	enum class Type : uint8_t
 	{
 		Line,
+		LineRunningAverage,
 		Boxplot
 	};
 
@@ -93,6 +94,7 @@ private:
 	chart_data &get_data_for_field(const telemetry_field *field);
 
 	QLineSeries *create_line_series(const telemetry_field *field) const;
+	void fill_line_series(QLineSeries *series, const telemetry_field *field) const;
 
 	void rescale_axes();
 

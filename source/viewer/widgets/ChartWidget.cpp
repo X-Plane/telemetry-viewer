@@ -7,6 +7,7 @@
 #include "ChartWidget.h"
 #include "utilities/Color.h"
 #include "utilities/PerformanceCalculator.h"
+#include "utilities/RunningAverage.h"
 
 void ChartWidget::chart_data::detach() const
 {
@@ -65,7 +66,7 @@ void ChartWidget::chart_data::update_box_set(int32_t start, int32_t end, double 
 
 ChartWidget::ChartWidget(QWidget *parent) :
 	QChartView(parent),
-	m_type(Type::Line),
+	m_type(Type::LineRunningAverage),
 	m_memory_scaling(MemoryScaling::Megabytes),
 	m_start(0),
 	m_end(std::numeric_limits<int32_t>::max())
@@ -97,6 +98,7 @@ ChartWidget::ChartWidget(QWidget *parent) :
 	switch(m_type)
 	{
 		case Type::Line:
+		case Type::LineRunningAverage:
 			setChart(m_line_chart);
 			break;
 		case Type::Boxplot:
@@ -149,6 +151,13 @@ void ChartWidget::set_type(Type type)
 	switch(m_type)
 	{
 		case Type::Line:
+		case Type::LineRunningAverage:
+			for(auto &data : m_data)
+			{
+				data.line_series->clear();
+				fill_line_series(data.line_series, data.field);
+			}
+
 			setChart(m_line_chart);
 			break;
 		case Type::Boxplot:
@@ -497,8 +506,17 @@ QLineSeries *ChartWidget::create_line_series(const telemetry_field *field) const
 	pen.setWidth(2);
 	series->setPen(pen);
 
+	fill_line_series(series, field);
+
+	return series;
+}
+
+void ChartWidget::fill_line_series(QLineSeries *series, const telemetry_field *field) const
+{
 	qreal last_time = -1000.0f;
 	qreal last_value = 0.0f;
+
+	RunningAverage<4> running_avg;
 
 	for(auto &data : field->get_data_points())
 	{
@@ -526,12 +544,13 @@ QLineSeries *ChartWidget::create_line_series(const telemetry_field *field) const
 				break;
 		}
 
+		if(m_type == Type::LineRunningAverage)
+			value = running_avg.update(value);
+
 		series->append(data.timestamp, value);
 
 		last_time = data.timestamp;
 		last_value = value;
 	}
-
-	return series;
 }
 
