@@ -193,13 +193,12 @@ void ChartWidget::update_tooltip(const QPointF &point) const
 
 	for(auto &data : m_data)
 	{
-		if(data.line_series->count() == 0)
+		const auto &points = data.field->get_data_points();
+
+		if(points.empty())
 			continue;
 
-		const QPointF &first = data.line_series->at(0);
-		const QPointF &last = data.line_series->at(data.line_series->count() - 1);
-
-		if(chart_point.x() >= first.x() && chart_point.x() <= last.x())
+		if(chart_point.x() >= points.front().timestamp && chart_point.x() <= points.back().timestamp)
 		{
 			try
 			{
@@ -263,8 +262,11 @@ void ChartWidget::set_type(Type type)
 		case Type::LineRunningAverage:
 			for(auto &data : m_data)
 			{
-				data.line_series->clear();
-				fill_line_series(data.line_series, data.field);
+				if(data.line_series)
+				{
+					data.line_series->clear();
+					fill_line_series(data.line_series, data.field);
+				}
 			}
 
 			setChart(m_line_chart);
@@ -310,15 +312,20 @@ void ChartWidget::add_data(const telemetry_field *field, QColor color)
 	if(iterator != m_data.end())
 		return;
 
+	chart_data &data = m_data.emplace_back();
+	data.field = field;
+	data.color = color;
+
+	if(field->get_type() == telemetry_type::string)
+	{
+		return;
+	}
 
 	auto [ min_value, max_value ] = field->get_extreme_data_point_in_range(m_start, m_end);
 
-	chart_data &data = m_data.emplace_back();
-	data.field = field;
 	data.axis = get_chart_axis_for_field(field);
 	data.min_value = min_value;
 	data.max_value = max_value;
-	data.color = color;
 
 	data.line_series = create_line_series(data.field);
 	data.line_series->setColor(data.color);
@@ -518,6 +525,9 @@ void ChartWidget::rescale_axes()
 	for(auto &data : m_data)
 	{
 		if(data.is_hidden)
+			continue;
+
+		if(!data.axis)
 			continue;
 
 		enabled_fields ++;

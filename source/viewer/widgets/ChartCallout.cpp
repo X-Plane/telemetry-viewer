@@ -73,12 +73,40 @@ void ChartCallout::set_data_points(const ChartWidget *widget, const QVector<QPai
 		{
 			case telemetry_unit::value:
 			{
-				text = text % QString::asprintf("%0.3f", point.value.get<double>());
+				switch(field->get_type())
+				{
+					case telemetry_type::boolean:
+					{
+						if(point.value.b)
+							text = text % "true";
+						else
+							text = text % "false";
+
+						break;
+					}
+
+					case telemetry_type::string:
+						text = text % point.value.string.c_str();
+						break;
+
+					default:
+					{
+						if(point.value.can_convert_to<double>())
+							text = text % QString::asprintf("%0.3f", point.value.get<double>());
+						else
+							text = text % "NAN";
+					}
+				}
+
 				break;
 			}
 			case telemetry_unit::time:
 			{
-				text = text % format_time(point.value.get<double>());
+				if(point.value.can_convert_to<double>())
+					text = text % format_time(point.value.get<double>());
+				else
+					text = text % "NAN";
+
 				break;
 			}
 			case telemetry_unit::duration:
@@ -89,30 +117,38 @@ void ChartCallout::set_data_points(const ChartWidget *widget, const QVector<QPai
 			}
 			case telemetry_unit::fps:
 			{
-				text = text % QString::asprintf("%0.2fFPS", point.value.get<double>());
+				if(point.value.can_convert_to<double>())
+					text = text % QString::asprintf("%0.2fFPS", point.value.get<double>());
+				else
+					text = text % "NAN";
 				break;
 			}
 			case telemetry_unit::memory:
 			{
-				const double value = widget->scale_memory(point.value.get<double>());
-
-				switch(widget->get_memory_scaling())
+				if(point.value.can_convert_to<double>())
 				{
-					using enum ChartWidget::MemoryScaling;
+					const double value = widget->scale_memory(point.value.get<double>());
 
-					case Bytes:
-						text = text % QString::asprintf("%.0fb", value);
-						break;
-					case Kilobytes:
-						text = text % QString::asprintf("%.2fKb", value);
-						break;
-					case Megabytes:
-						text = text % QString::asprintf("%.2fMb", value);
-						break;
-					case Gigabytes:
-						text = text % QString::asprintf("%.2fGb", value);
-						break;
+					switch(widget->get_memory_scaling())
+					{
+						using enum ChartWidget::MemoryScaling;
+
+						case Bytes:
+							text = text % QString::asprintf("%.0fb", value);
+							break;
+						case Kilobytes:
+							text = text % QString::asprintf("%.2fKb", value);
+							break;
+						case Megabytes:
+							text = text % QString::asprintf("%.2fMb", value);
+							break;
+						case Gigabytes:
+							text = text % QString::asprintf("%.2fGb", value);
+							break;
+					}
 				}
+				else
+					text = text % "NAN";
 
 				break;
 			}
