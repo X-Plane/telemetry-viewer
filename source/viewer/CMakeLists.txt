@@ -38,6 +38,8 @@ set(SOURCES
 		utilities/RunningAverage.h
 		utilities/Settings.cpp
 		utilities/Settings.h
+		widgets/ChartCallout.cpp
+		widgets/ChartCallout.h
 		widgets/ChartWidget.cpp
 		widgets/ChartWidget.h
 		widgets/DocumentWindow.ui

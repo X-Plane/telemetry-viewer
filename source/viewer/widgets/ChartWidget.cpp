@@ -5,6 +5,7 @@
 #include <QLegendMarker>
 #include <telemetry/container.h>
 #include "ChartWidget.h"
+#include "ChartCallout.h"
 #include "utilities/Color.h"
 #include "utilities/PerformanceCalculator.h"
 #include "utilities/RunningAverage.h"
@@ -69,7 +70,8 @@ ChartWidget::ChartWidget(QWidget *parent) :
 	m_type(Type::LineRunningAverage),
 	m_memory_scaling(MemoryScaling::Megabytes),
 	m_start(0),
-	m_end(std::numeric_limits<int32_t>::max())
+	m_end(std::numeric_limits<int32_t>::max()),
+	m_tooltip(nullptr)
 {
 	m_timeline_axis = new QValueAxis();
 	m_timeline_axis->setTitleText("Timeline");
@@ -106,6 +108,26 @@ ChartWidget::ChartWidget(QWidget *parent) :
 			break;
 	}
 
+	m_tooltip = new ChartCallout(m_line_chart);
+
+	m_crosshairX = new QGraphicsLineItem(m_line_chart);
+	m_crosshairY = new QGraphicsLineItem(m_line_chart);
+
+	// Set line style for crosshairs (dashed, light gray)
+	QPen pen(QColor(100, 100, 100, 150));
+	pen.setStyle(Qt::DashLine);
+	pen.setWidth(1);
+
+	m_crosshairX->setPen(pen);
+	m_crosshairY->setPen(pen);
+
+	// Hide crosshairs initially
+	m_crosshairX->hide();
+	m_crosshairY->hide();
+
+	// Add crosshair lines to scene
+	scene()->addItem(m_crosshairX);
+	scene()->addItem(m_crosshairY);
 }
 ChartWidget::~ChartWidget()
 {
@@ -113,6 +135,93 @@ ChartWidget::~ChartWidget()
 		delete axis;
 }
 
+
+void ChartWidget::mouseMoveEvent(QMouseEvent *event)
+{
+	if(m_type == Type::Boxplot)
+	{
+		m_crosshairX->hide();
+		m_crosshairY->hide();
+
+		m_tooltip->hide();
+	}
+	else
+	{
+		const QRectF area = chart()->plotArea();
+		const QPointF point = mapToScene(event->position().toPoint());
+
+		if(!area.contains(point))
+		{
+			m_crosshairX->hide();
+			m_crosshairY->hide();
+
+			m_tooltip->hide();
+		}
+		else
+		{
+			update_tooltip(point);
+			update_crosshair(point, area);
+
+			m_crosshairX->show();
+			m_crosshairY->show();
+		}
+	}
+
+	QChartView::mouseMoveEvent(event);
+}
+
+void ChartWidget::leaveEvent(QEvent *event)
+{
+	m_crosshairX->hide();
+	m_crosshairY->hide();
+	m_tooltip->hide();
+
+	QChartView::leaveEvent(event);
+}
+
+void ChartWidget::update_crosshair(const QPointF &point, const QRectF &plot_area) const
+{
+	m_crosshairX->setLine(plot_area.left(), (int32_t)point.y(), plot_area.right(), (int32_t)point.y());
+	m_crosshairY->setLine((int32_t)point.x(), plot_area.top(), (int32_t)point.x(), plot_area.bottom());
+}
+
+void ChartWidget::update_tooltip(const QPointF &point) const
+{
+	const QPointF chart_point = chart()->mapToValue(point);
+
+	QVector<QPair<const telemetry_field *, telemetry_data_point>> data_points;
+
+	for(auto &data : m_data)
+	{
+		if(data.line_series->count() == 0)
+			continue;
+
+		const QPointF &first = data.line_series->at(0);
+		const QPointF &last = data.line_series->at(data.line_series->count() - 1);
+
+		if(chart_point.x() >= first.x() && chart_point.x() <= last.x())
+		{
+			try
+			{
+				telemetry_data_point data_point = data.field->get_data_point_closest_to_time(chart_point.x());
+				data_points.append(qMakePair(data.field, data_point));
+			}
+			catch(...)
+			{}
+		}
+	}
+
+	if(data_points.empty())
+	{
+		m_tooltip->hide();
+		return;
+	}
+
+	m_tooltip->set_data_points(this, data_points);
+	m_tooltip->set_anchor(point);
+
+	m_tooltip->show();
+}
 
 
 void ChartWidget::set_range(int32_t start, int32_t end)
@@ -388,7 +497,6 @@ double ChartWidget::scale_memory(double bytes) const
 			return bytes / 1024.0 / 1024.0;
 		case MemoryScaling::Gigabytes:
 			return bytes / 1024.0 / 1024.0 / 1024.0;
-
 	}
 
 	return bytes;
