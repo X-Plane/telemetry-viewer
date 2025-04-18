@@ -400,6 +400,26 @@ void DocumentWindow::set_document(TelemetryDocument *document)
 					item->setData(0, Qt::UserRole, QVariant::fromValue(&field));
 					item->setBackground(0, generate_color_for_title(title));
 					item->setText(1, title);
+					item->setToolTip(1, title);
+
+					switch(field.get_unit())
+					{
+						case telemetry_unit::value:
+							item->setToolTip(1, "Raw value");
+							break;
+						case telemetry_unit::fps:
+							item->setToolTip(1, "FPS");
+							break;
+						case telemetry_unit::time:
+							item->setToolTip(1, "Time");
+							break;
+						case telemetry_unit::memory:
+							item->setToolTip(1, "Memory");
+							break;
+						case telemetry_unit::duration:
+							item->setToolTip(1, "Duration");
+							break;
+					}
 
 					if(provider.get_identifier() == provider_timing::identifier)
 					{
