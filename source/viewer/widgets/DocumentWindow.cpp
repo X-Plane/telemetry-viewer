@@ -20,6 +20,12 @@ DocumentWindow::DocumentWindow() :
 {
 	setupUi(this);
 
+	add_toolbar_spacer();
+
+	m_installation_selector = new QComboBox();
+	add_toolbar_widget(m_installation_selector, "Installation");
+
+
 	m_action_exit->setShortcut(QKeySequence::Quit);
 	connect(m_action_exit, &QAction::triggered, qApp, &QApplication::quit);
 
@@ -447,6 +453,30 @@ void DocumentWindow::set_document(TelemetryDocument *document)
 }
 
 
+QAction *DocumentWindow::add_toolbar_widget(QWidget *widget, const QString &text) const
+{
+	QWidget *container = new QWidget();
+
+	QVBoxLayout *layout = new QVBoxLayout(container);
+	layout->setContentsMargins(2, 2, 2, 2);
+	layout->setSpacing(2);
+	layout->setAlignment(Qt::AlignCenter);
+
+	QLabel *label = new QLabel(text, container);
+	label->setAlignment(Qt::AlignCenter);
+
+	layout->addWidget(widget);
+	layout->addWidget(label);
+
+	return toolBar->addWidget(container);
+}
+
+QAction *DocumentWindow::add_toolbar_spacer() const
+{
+	QWidget *spacer = new QWidget();
+	spacer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+	return toolBar->addWidget(spacer);
+}
 
 
 QColor DocumentWindow::generate_color_for_title(const QString &title) const
