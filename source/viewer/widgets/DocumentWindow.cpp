@@ -26,6 +26,12 @@ DocumentWindow::DocumentWindow() :
 {
 	setupUi(this);
 
+	add_toolbar_spacer();
+
+	m_installation_selector = new QComboBox();
+	add_toolbar_widget(m_installation_selector, "Installation");
+
+
 	m_action_exit->setShortcut(QKeySequence::Quit);
 	connect(m_action_exit, &QAction::triggered, qApp, &QApplication::quit);
 
@@ -414,6 +420,7 @@ void DocumentWindow::set_document(TelemetryDocument *document)
 
 					case telemetry_type::string:
 						stat_item->setText(1, QString::fromStdString(entry.value.string));
+						stat_item->setToolTip(1, QString::fromStdString(entry.value.string));
 						break;
 
 					default:
@@ -452,7 +459,10 @@ void DocumentWindow::set_document(TelemetryDocument *document)
 
 				for(auto &field: provider.get_fields())
 				{
-					if(field.empty())
+					const telemetry_type type = field.get_type();
+					const bool can_chart = !(type == telemetry_type::vec2 || type == telemetry_type::dvec2);
+
+					if(field.empty() || !can_chart)
 						continue;
 
 					QTreeWidgetItem *item = new QTreeWidgetItem(provider_item);
@@ -460,6 +470,25 @@ void DocumentWindow::set_document(TelemetryDocument *document)
 					item->setData(0, Qt::UserRole, QVariant::fromValue(&field));
 					item->setBackground(0, get_color_for_telemetry_field(&field));
 					item->setText(1, QString::fromStdString(field.get_title()));
+
+					switch(field.get_unit())
+					{
+						case telemetry_unit::value:
+							item->setToolTip(1, "Raw value");
+							break;
+						case telemetry_unit::fps:
+							item->setToolTip(1, "FPS");
+							break;
+						case telemetry_unit::time:
+							item->setToolTip(1, "Time");
+							break;
+						case telemetry_unit::memory:
+							item->setToolTip(1, "Memory");
+							break;
+						case telemetry_unit::duration:
+							item->setToolTip(1, "Duration");
+							break;
+					}
 
 					if(provider.get_identifier() == provider_timing::identifier)
 					{
@@ -510,6 +539,31 @@ void DocumentWindow::set_document(TelemetryDocument *document)
 
 		m_timeline_widget->setTimelineSpans(container.get_events());
 	}
+}
+
+QAction *DocumentWindow::add_toolbar_widget(QWidget *widget, const QString &text) const
+{
+	QWidget *container = new QWidget();
+
+	QVBoxLayout *layout = new QVBoxLayout(container);
+	layout->setContentsMargins(2, 2, 2, 2);
+	layout->setSpacing(2);
+	layout->setAlignment(Qt::AlignCenter);
+
+	QLabel *label = new QLabel(text, container);
+	label->setAlignment(Qt::AlignCenter);
+
+	layout->addWidget(widget);
+	layout->addWidget(label);
+
+	return toolBar->addWidget(container);
+}
+
+QAction *DocumentWindow::add_toolbar_spacer() const
+{
+	QWidget *spacer = new QWidget();
+	spacer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+	return toolBar->addWidget(spacer);
 }
 
 void DocumentWindow::add_document(TelemetryDocument *document)

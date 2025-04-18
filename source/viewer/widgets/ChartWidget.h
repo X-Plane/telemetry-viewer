@@ -9,6 +9,8 @@
 #include <QChartView>
 #include <telemetry/provider.h>
 
+class ChartCallout;
+
 class ChartWidget : public QChartView
 {
 Q_OBJECT
@@ -16,6 +18,7 @@ public:
 	enum class Type : uint8_t
 	{
 		Line,
+		LineRunningAverage,
 		Boxplot
 	};
 
@@ -41,10 +44,16 @@ public:
 	void set_memory_scaling(MemoryScaling scaling);
 	MemoryScaling get_memory_scaling() const { return m_memory_scaling; }
 
+	double scale_memory(double bytes) const;
+
 	void set_type(Type type);
 	Type get_type() const { return m_type; }
 
 	void set_range(int32_t start, int32_t end);
+
+protected:
+	void mouseMoveEvent(QMouseEvent *event) override;
+	void leaveEvent(QEvent *event) override;
 
 private:
 	struct chart_axis
@@ -87,14 +96,16 @@ private:
 		telemetry_data_point max_value;
 	};
 
-	void build_chart_axis(telemetry_unit unit);
+	void update_tooltip(const QPointF &point) const;
+	void update_crosshair(const QPointF &point, const QRectF &plot_area) const;
 
-	double scale_memory(double bytes) const;
+	void build_chart_axis(telemetry_unit unit);
 
 	chart_axis *get_chart_axis_for_field(const telemetry_field *field) const;
 	chart_data &get_data_for_field(const telemetry_field *field);
 
 	QLineSeries *create_line_series(const telemetry_field *field, int32_t time_offset) const;
+	void fill_line_series(QLineSeries *series, const telemetry_field *field, int32_t time_offset) const;
 
 	void rescale_axes();
 
@@ -112,6 +123,10 @@ private:
 	QValueAxis *m_timeline_axis;
 	QBarCategoryAxis *m_category_axis;
 	QVector<chart_axis *> m_axes;
+
+	ChartCallout *m_tooltip;
+	QGraphicsLineItem *m_crosshairX;
+	QGraphicsLineItem *m_crosshairY;
 };
 
 #endif //TELEMETRY_STUDIO_CHART_WIDGET_H

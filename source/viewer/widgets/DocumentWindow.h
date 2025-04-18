@@ -71,6 +71,9 @@ private:
 	void set_time_range(int32_t start, int32_t end);
 	void touch_telemetry_file(const QFileInfo &file_info);
 
+	QAction *add_toolbar_widget(QWidget *widget, const QString &text) const;
+	QAction *add_toolbar_spacer() const;
+
 	QString m_base_dir;
 
 	TelemetryDocument *m_document;
@@ -78,6 +81,8 @@ private:
 	QVector<const telemetry_field *> m_enabled_fields;
 
 	std::vector<std::unique_ptr<QAction>> m_recent_file_actions;
+
+	QComboBox *m_installation_selector;
 
 	QVector<event_range> m_event_ranges;
 	QVector<XplaneInstallation> m_installations;

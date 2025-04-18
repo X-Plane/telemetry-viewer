@@ -177,6 +177,20 @@ struct telemetry_data_value
 
 		throw std::runtime_error("Unsupported type conversion");
 	}
+
+	template<class T>
+	bool can_convert_to() const
+	{
+		try
+		{
+			get<T>();
+			return true;
+		}
+		catch(...)
+		{
+			return false;
+		}
+	}
 };
 
 struct telemetry_data_point

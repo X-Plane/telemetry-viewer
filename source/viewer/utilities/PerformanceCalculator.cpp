@@ -61,7 +61,7 @@ double PerformanceCalculator::get_median_value(size_t start, size_t end) const
 	const size_t count = end - start;
 	const size_t half = count / 2;
 
-	if(count & 0x1)
+	if(count & 0x1 && count > 1)
 	{
 		const double right = m_samples[half + start].value.get<double>();
 		const double left = m_samples[half - 1 + start].value.get<double>();
