@@ -58,7 +58,7 @@ private:
 		QString name;
 	};
 
-	struct additional_document
+	struct loaded_document
 	{
 		TelemetryDocument *document;
 		int32_t start_offset;
@@ -76,15 +76,12 @@ private:
 
 	QString m_base_dir;
 
-	TelemetryDocument *m_document;
-	QVector<additional_document> m_additional_documents;
+	QVector<loaded_document> m_loaded_documents;
 	QVector<const telemetry_field *> m_enabled_fields;
 
 	std::vector<std::unique_ptr<QAction>> m_recent_file_actions;
 
 	QComboBox *m_installation_selector;
-
-	QVector<event_range> m_event_ranges;
 	QVector<XplaneInstallation> m_installations;
 };
 

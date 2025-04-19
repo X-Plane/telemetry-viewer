@@ -21,8 +21,7 @@ static QColor get_color_for_telemetry_field(const telemetry_field *field)
 }
 
 
-DocumentWindow::DocumentWindow() :
-	m_document(nullptr)
+DocumentWindow::DocumentWindow()
 {
 	setupUi(this);
 
@@ -45,8 +44,13 @@ DocumentWindow::DocumentWindow() :
 	m_mode_selector->setCurrentIndex((int)m_chart_view->get_type());
 	m_memory_scaling->setCurrentIndex((int)m_chart_view->get_memory_scaling());
 
-	m_splitter->setStretchFactor(0, 3);
-	m_splitter->setStretchFactor(1, 1);
+	m_splitter->setStretchFactor(0, 1);
+	m_splitter->setStretchFactor(1, 3);
+	m_splitter->setStretchFactor(2, 1);
+
+	m_splitter_vertical->setStretchFactor(0, 2);
+	m_splitter_vertical->setStretchFactor(1, 2);
+	m_splitter_vertical->setStretchFactor(2, 1);
 
 	connect(m_timeline_widget, &TimelineWidget::spanFocused, [this](uint64_t id){
 		auto model = m_timeline_tree->model();
@@ -83,7 +87,8 @@ DocumentWindow::DocumentWindow() :
 
 DocumentWindow::~DocumentWindow()
 {
-	delete m_document;
+	for(auto &document : m_loaded_documents)
+		delete document.document;
 }
 
 void DocumentWindow::closeEvent(QCloseEvent *event)
@@ -128,9 +133,9 @@ void DocumentWindow::set_field_enabled(const telemetry_field *field, bool enable
 {
 	QVector<QPair<const telemetry_field *, int32_t>> fields;
 
-	for(auto &additional : m_additional_documents)
+	for(auto &container : m_loaded_documents)
 	{
-		const auto &data = additional.document->get_data();
+		const auto &data = container.document->get_data();
 		if(!data.has_provider(field->get_provider_id()))
 			continue;
 
@@ -139,7 +144,7 @@ void DocumentWindow::set_field_enabled(const telemetry_field *field, bool enable
 			continue;
 
 		const telemetry_field &additional_field = provider.get_field(field->get_id());
-		fields.push_back(qMakePair(&additional_field, additional.start_offset));
+		fields.push_back(qMakePair(&additional_field, container.start_offset));
 	}
 
 	if(enable)
@@ -256,19 +261,17 @@ void DocumentWindow::clear()
 	m_chart_view->clear();
 
 	m_event_picker->clear();
-	m_event_ranges.clear();
 
 	m_providers_view->clear();
 	m_overview_view->clear();
 	m_timeline_tree->clear();
 
-	for(auto &additional : m_additional_documents)
-		delete additional.document;
+	m_documents_tree->clear();
 
-	m_additional_documents.clear();
+	for(auto &container : m_loaded_documents)
+		delete container.document;
 
-	delete m_document;
-	m_document = nullptr;
+	m_loaded_documents.clear();
 }
 
 void DocumentWindow::set_document_by_path(const QString &path)
@@ -289,12 +292,12 @@ void DocumentWindow::set_document(TelemetryDocument *document)
 {
 	clear();
 
-	m_document = document;
-
-	if(!m_document)
+	if(!document)
 		return;
 
-	const QString path = m_document->get_path();
+	add_document(document);
+
+	const QString path = document->get_path();
 	const QFileInfo info(path);
 
 	m_base_dir = info.absolutePath();
@@ -302,7 +305,7 @@ void DocumentWindow::set_document(TelemetryDocument *document)
 	setWindowFilePath(path);
 	statusBar()->showMessage("Loaded " + path);
 
-	const auto &container = m_document->get_data();
+	const auto &container = document->get_data();
 
 	m_start_edit->set_range(container.get_start_time(), container.get_end_time());
 	m_start_edit->set_value(container.get_start_time());
@@ -310,80 +313,13 @@ void DocumentWindow::set_document(TelemetryDocument *document)
 	m_end_edit->set_range(container.get_start_time(), container.get_end_time());
 	m_end_edit->set_value(container.get_end_time());
 
-	{
-		// Figure out our event ranges
-		{
-			event_range everything;
+	auto &ranges = m_loaded_documents.front().event_ranges;
 
-			everything.start = container.get_start_time();
-			everything.end = container.get_end_time();
-			everything.name = "Everything";
+	for(auto &range : ranges)
+		m_event_picker->addItem(range.name);
 
-			m_event_ranges.push_back(everything);
-			m_event_picker->addItem(everything.name);
-		}
-
-		if(container.has_provider(provider_sim_apup::identifier))
-		{
-			auto &do_world_events = provider_sim_apup::get_field(container, provider_sim_apup::do_world);
-			auto &aircraft_events = provider_sim_apup::get_field(container, provider_sim_apup::loaded_aircraft);
-
-			bool is_doing_world = false;
-			double start_timestamp = 0.0;
-			double end_timestamp = 0.0;
-
-			auto flush_range = [this, &aircraft_events](double start, double end) {
-
-				// We want at least 12 seconds worth of data to add it to the timeline
-				if((end - start) > 12.0)
-				{
-					QString title;
-
-					try
-					{
-						title = aircraft_events.get_data_point_after_time(start + 5.0).value.get<const char *>();
-					}
-					catch(...)
-					{
-						title = "Event";
-					}
-
-					event_range range;
-					range.start = start + 8.0;
-					range.end = end - 3.0;
-					range.name = title + QString(" (") + TimePickerWidget::format_time(range.start) + " - " + TimePickerWidget::format_time(range.end) + QString(")");
-
-					m_event_ranges.push_back(range);
-					m_event_picker->addItem(range.name);
-				}
-
-			};
-
-			for(auto &data : do_world_events.get_data_points())
-			{
-				if(data.value.get<bool>() && !is_doing_world)
-				{
-					is_doing_world = true;
-					start_timestamp = data.timestamp;
-				}
-
-				if(data.value.get<bool>())
-					end_timestamp = data.timestamp;
-
-				if(!data.value.get<bool>() && is_doing_world)
-				{
-					is_doing_world = false;
-					flush_range(start_timestamp, end_timestamp);
-				}
-			}
-
-			if(is_doing_world)
-				flush_range(start_timestamp, end_timestamp);
-		}
-
-		m_event_picker->setCurrentIndex(m_event_ranges.size() > 1 ? 1 : 0);
-		range_changed();
-	}
+	m_event_picker->setCurrentIndex(ranges.size() > 1 ? 1 : 0);
+	range_changed();
 
 	// Statistics view
 	{
@@ -568,7 +504,7 @@ QAction *DocumentWindow::add_toolbar_spacer() const
 
 void DocumentWindow::add_document(TelemetryDocument *document)
 {
-	additional_document entry;
+	loaded_document entry;
 	entry.document = document;
 	entry.start_offset = 0.0;
 
@@ -580,65 +516,91 @@ void DocumentWindow::add_document(TelemetryDocument *document)
 	QVector<event_range> ranges;
 
 	{
-		auto &do_world_events = provider_sim_apup::get_field(container, provider_sim_apup::do_world);
-		auto &aircraft_events = provider_sim_apup::get_field(container, provider_sim_apup::loaded_aircraft);
-
-		bool is_doing_world = false;
-		double start_timestamp = 0.0;
-		double end_timestamp = 0.0;
-
-		auto flush_range = [&aircraft_events, &ranges](double start, double end) {
-
-			// We want at least 12 seconds worth of data to add it to the timeline
-			if((end - start) > 12.0)
-			{
-				QString title;
-
-				try
-				{
-					title = aircraft_events.get_data_point_after_time(start + 5.0).value.get<const char *>();
-				}
-				catch(...)
-				{
-					title = "Event";
-				}
-
-				event_range range;
-				range.start = start + 8.0;
-				range.end = end - 3.0;
-				range.name = title + QString(" (") + TimePickerWidget::format_time(range.start) + " - " + TimePickerWidget::format_time(range.end) + QString(")");
-
-				ranges.push_back(range);
-			}
-
-		};
-
-		for(auto &data : do_world_events.get_data_points())
+		// Figure out our event ranges
 		{
-			if(data.value.get<bool>() && !is_doing_world)
-			{
-				is_doing_world = true;
-				start_timestamp = data.timestamp;
-			}
+			event_range everything;
 
-			if(data.value.get<bool>())
-				end_timestamp = data.timestamp;
+			everything.start = container.get_start_time();
+			everything.end = container.get_end_time();
+			everything.name = "Everything";
 
-			if(!data.value.get<bool>() && is_doing_world)
-			{
-				is_doing_world = false;
-				flush_range(start_timestamp, end_timestamp);
-			}
+			ranges.push_back(everything);
 		}
 
-		if(is_doing_world)
-			flush_range(start_timestamp, end_timestamp);
+		if(container.has_provider(provider_sim_apup::identifier))
+		{
+			auto &do_world_events = provider_sim_apup::get_field(container, provider_sim_apup::do_world);
+			auto &aircraft_events = provider_sim_apup::get_field(container, provider_sim_apup::loaded_aircraft);
+
+			bool is_doing_world = false;
+			double start_timestamp = 0.0;
+			double end_timestamp = 0.0;
+
+			auto flush_range = [this, &ranges, &aircraft_events](double start, double end) {
+
+				// We want at least 12 seconds worth of data to add it to the timeline
+				if((end - start) > 12.0)
+				{
+					QString title;
+
+					try
+					{
+						title = aircraft_events.get_data_point_after_time(start + 5.0).value.get<const char *>();
+					}
+					catch(...)
+					{
+						title = "Event";
+					}
+
+					event_range range;
+					range.start = start + 8.0;
+					range.end = end - 3.0;
+					range.name = title + QString(" (") + TimePickerWidget::format_time(range.start) + " - " + TimePickerWidget::format_time(range.end) + QString(")");
+
+					ranges.push_back(range);
+				}
+
+			};
+
+			for(auto &data : do_world_events.get_data_points())
+			{
+				if(data.value.get<bool>() && !is_doing_world)
+				{
+					is_doing_world = true;
+					start_timestamp = data.timestamp;
+				}
+
+				if(data.value.get<bool>())
+					end_timestamp = data.timestamp;
+
+				if(!data.value.get<bool>() && is_doing_world)
+				{
+					is_doing_world = false;
+					flush_range(start_timestamp, end_timestamp);
+				}
+			}
+
+			if(is_doing_world)
+				flush_range(start_timestamp, end_timestamp);
+		}
 	}
 
 	entry.event_ranges = ranges;
-	entry.start_offset = m_event_ranges[1].start - ranges[0].start;
 
-	m_additional_documents.push_back(entry);
+	if(!m_loaded_documents.empty())
+		entry.start_offset = m_loaded_documents.front().event_ranges[1].start - ranges[1].start;
+
+	m_loaded_documents.push_back(entry);
+
+	{
+		const QString path = document->get_path();
+		const QFileInfo info(path);
+
+		QTreeWidgetItem *item = new QTreeWidgetItem();
+		item->setText(0, info.fileName());
+
+		m_documents_tree->addTopLevelItem(item);
+	}
 
 	for(auto &field : m_enabled_fields)
 	{
@@ -698,80 +660,83 @@ void DocumentWindow::save_state(QSettings &state) const
 
 	QChart *chart = new QChart();
 
-	struct perf_set
+	if(!m_loaded_documents.empty())
 	{
-		QString name;
-		float percentile;
-	};
-
-	const std::array perf_series = {
-		perf_set{ "P1", 0.01f },
-		perf_set{ "P5", 0.05f },
-		perf_set{ "Average", -1.0f },
-		perf_set{ "P95", 0.95f },
-		perf_set{ "P99", 0.99f }
-	};
-
-	auto build_bar_set = [&](provider_timing::field_id field_id) -> QBarSet * {
-
-		try
+		struct perf_set
 		{
-			auto &field = provider_timing::get_field(m_document->get_data(), field_id);
-			PerformanceCalculator perf(field, start, end);
+			QString name;
+			float percentile;
+		};
 
-			QBarSet *set = new QBarSet(QString::fromStdString(field.get_title()));
-			set->setColor(get_color_for_telemetry_field(&field));
+		const std::array perf_series = {
+			perf_set{ "P1", 0.01f },
+			perf_set{ "P5", 0.05f },
+			perf_set{ "Average", -1.0f },
+			perf_set{ "P95", 0.95f },
+			perf_set{ "P99", 0.99f }
+		};
+
+		auto build_bar_set = [&](provider_timing::field_id field_id) -> QBarSet * {
+
+			try
+			{
+				auto &field = provider_timing::get_field(m_loaded_documents.at(0).document->get_data(), field_id);
+				PerformanceCalculator perf(field, start, end);
+
+				QBarSet *set = new QBarSet(QString::fromStdString(field.get_title()));
+				set->setColor(get_color_for_telemetry_field(&field));
+
+				for(auto &perf_set : perf_series)
+				{
+					if(perf_set.percentile <= 0.0f)
+						set->append(perf.calculate_average() * 1000.0);
+					else
+						set->append(perf.calculate_percentile(perf_set.percentile) * 1000.0);
+				}
+
+				return set;
+			}
+			catch(...)
+			{
+				return nullptr;
+			}
+		};
+
+		QList<QBarSet *> bar_sets;
+
+		if(QBarSet *cpu = build_bar_set(provider_timing::cpu))
+			bar_sets.append(cpu);
+		if(QBarSet *gpu = build_bar_set(provider_timing::gpu))
+			bar_sets.append(gpu);
+
+
+		if(!bar_sets.isEmpty())
+		{
+			QHorizontalBarSeries *series = new QHorizontalBarSeries();
+			series->append(bar_sets);
+			series->setLabelsVisible(true);
+			series->setLabelsPosition(QAbstractBarSeries::LabelsInsideEnd);
+			series->setLabelsPrecision(3);
+			series->setLabelsFormat("@valuems");
+
+			chart->addSeries(series);
+
+			auto y_axis = new QBarCategoryAxis();
 
 			for(auto &perf_set : perf_series)
-			{
-				if(perf_set.percentile <= 0.0f)
-					set->append(perf.calculate_average() * 1000.0);
-				else
-					set->append(perf.calculate_percentile(perf_set.percentile) * 1000.0);
-			}
+				y_axis->append(perf_set.name);
 
-			return set;
+			chart->addAxis(y_axis, Qt::AlignLeft);
+			series->attachAxis(y_axis);
+
+			auto x_axis = new QValueAxis();
+			x_axis->setLabelFormat("%ims");
+
+			chart->addAxis(x_axis, Qt::AlignBottom);
+
+			series->attachAxis(x_axis);
+			x_axis->applyNiceNumbers();
 		}
-		catch(...)
-		{
-			return nullptr;
-		}
-	};
-
-	QList<QBarSet *> bar_sets;
-
-	if(QBarSet *cpu = build_bar_set(provider_timing::cpu))
-		bar_sets.append(cpu);
-	if(QBarSet *gpu = build_bar_set(provider_timing::gpu))
-		bar_sets.append(gpu);
-
-
-	if(!bar_sets.isEmpty())
-	{
-		QHorizontalBarSeries *series = new QHorizontalBarSeries();
-		series->append(bar_sets);
-		series->setLabelsVisible(true);
-		series->setLabelsPosition(QAbstractBarSeries::LabelsInsideEnd);
-		series->setLabelsPrecision(3);
-		series->setLabelsFormat("@valuems");
-
-		chart->addSeries(series);
-
-		auto y_axis = new QBarCategoryAxis();
-
-		for(auto &perf_set : perf_series)
-			y_axis->append(perf_set.name);
-
-		chart->addAxis(y_axis, Qt::AlignLeft);
-		series->attachAxis(y_axis);
-
-		auto x_axis = new QValueAxis();
-		x_axis->setLabelFormat("%ims");
-
-		chart->addAxis(x_axis, Qt::AlignBottom);
-
-		series->attachAxis(x_axis);
-		x_axis->applyNiceNumbers();
 	}
 
 	m_statistics_view->setChart(chart);
@@ -801,18 +766,21 @@ void DocumentWindow::open_file()
 
 void DocumentWindow::save_file()
 {
-	if(!m_document || !m_document->has_data())
-		return;
+	for(auto &document : m_loaded_documents)
+	{
+		if(!document.document->has_data())
+			continue;
 
-	QString base_path = m_base_dir;
+		QString base_path = m_base_dir;
 
-	if(!m_installations.empty() && base_path.isEmpty())
-		base_path = m_installations[m_installation_selector->currentIndex()].get_telemetry_path();
+		if(!m_installations.empty() && base_path.isEmpty())
+			base_path = m_installations[m_installation_selector->currentIndex()].get_telemetry_path();
 
-	QString path = QFileDialog::getSaveFileName(this, tr("Save Telemetry file"), base_path, tr("Telemetry File (*.tlm)"));
+		QString path = QFileDialog::getSaveFileName(this, tr("Save Telemetry file"), base_path, tr("Telemetry File (*.tlm)"));
 
-	if(!path.isEmpty())
-		m_document->save(path);
+		if(!path.isEmpty())
+			document.document->save(path);
+	}
 }
 
 void DocumentWindow::touch_telemetry_file(const QFileInfo &file_info)
@@ -875,8 +843,10 @@ void DocumentWindow::event_range_changed(int index)
 	if(index == -1)
 		return;
 
-	set_time_range(m_event_ranges[index].start, m_event_ranges[index].end);
+	auto &container = m_loaded_documents.front();
 
-	m_start_edit->set_value(m_event_ranges[index].start);
-	m_end_edit->set_value(m_event_ranges[index].end);
+	set_time_range(container.event_ranges[index].start, container.event_ranges[index].end);
+
+	m_start_edit->set_value(container.event_ranges[index].start);
+	m_end_edit->set_value(container.event_ranges[index].end);
 }
