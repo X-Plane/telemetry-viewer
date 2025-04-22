@@ -2,13 +2,13 @@
 // Created by Sidney on 16/10/24.
 //
 
+#include <cinttypes>
 #include <QApplication>
 #include <QPainter>
 #include <QFontMetrics>
 #include <QStringBuilder>
 #include <telemetry/provider.h>
 #include "ChartCallout.h"
-
 #include "ChartWidget.h"
 
 ChartCallout::ChartCallout(QChart *chart) :
@@ -53,11 +53,18 @@ void ChartCallout::set_anchor(QPointF point)
 	prepareGeometryChange();
 }
 
-void ChartCallout::set_data_points(const ChartWidget *widget, const QVector<QPair<const telemetry_field *, telemetry_data_point>> &data_points)
+void ChartCallout::set_data_points(const ChartWidget *widget, double time, const QVector<QPair<const telemetry_field *, telemetry_data_point>> &data_points)
 {
-	QString text;
+	const uint32_t minutes = time / 60.0;
+	const uint32_t seconds = uint32_t(time) % 60;
+	const uint32_t milliseconds = (time - uint32_t(time)) * 1000.0;
+
+	QString text = QString::asprintf("Timestamp: %02d:%02d:%03d\n", (int)minutes, (int)seconds, (int)milliseconds);
 
 	auto format_time = [](double value) {
+
+		if(value < 0.001)
+			return QString::asprintf("%0.0fus", value * 1000000.0);
 
 		if(value < 1.0)
 			return QString::asprintf("%0.2fms", value * 1000.0);
@@ -87,6 +94,18 @@ void ChartCallout::set_data_points(const ChartWidget *widget, const QVector<QPai
 
 					case telemetry_type::string:
 						text = text % point.value.string.c_str();
+						break;
+
+					case telemetry_type::uint8:
+					case telemetry_type::uint16:
+					case telemetry_type::uint32:
+					case telemetry_type::uint64:
+						text = text % QString::asprintf("%" PRIu64, point.value.get<uint64_t>());
+						break;
+
+					case telemetry_type::int32:
+					case telemetry_type::int64:
+						text = text % QString::asprintf("%" PRIi64, point.value.get<int64_t>());
 						break;
 
 					default:

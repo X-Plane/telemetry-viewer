@@ -219,7 +219,7 @@ void ChartWidget::update_tooltip(const QPointF &point) const
 		return;
 	}
 
-	m_tooltip->set_data_points(this, data_points);
+	m_tooltip->set_data_points(this, chart_point.x(), data_points);
 	m_tooltip->set_anchor(point);
 
 	m_tooltip->show();
