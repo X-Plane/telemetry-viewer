@@ -3,6 +3,7 @@
 //
 
 #include <QFile>
+#include <QFileInfo>
 #include <telemetry/known_providers.h>
 #include <telemetry/parser.h>
 #include "TelemetryDocument.h"
@@ -23,21 +24,28 @@ TelemetryDocument *TelemetryDocument::load_file(const QString &path)
 	file.read((char *)data.data(), length);
 	file.close();
 
-	TelemetryDocument *result = load_file(std::move(data));
+	QFileInfo info(path);
+
+	TelemetryDocument *result = load_file(std::move(data), info.fileName());
 	result->m_path = path;
 
 	return result;
 }
 
-TelemetryDocument *TelemetryDocument::load_file(std::vector<uint8_t> &&data)
+TelemetryDocument *TelemetryDocument::load_file(std::vector<uint8_t> &&data, const QString &name)
 {
 	TelemetryDocument *result = new TelemetryDocument();
-	result->load(std::move(data));
+	result->load(std::move(data), name);
 
 	return result;
 }
 
-void TelemetryDocument::load(std::vector<uint8_t> &&data)
+void TelemetryDocument::set_name(const QString &name)
+{
+	m_name = name;
+}
+
+void TelemetryDocument::load(std::vector<uint8_t> &&data, const QString &name)
 {
 	telemetry_parser_options options;
 	options.data_point_processor = [](const telemetry_container &container, const telemetry_provider &provider, const telemetry_field &field, const std::vector<telemetry_data_point> &data_points) {
@@ -70,6 +78,7 @@ void TelemetryDocument::load(std::vector<uint8_t> &&data)
 
 	m_path.clear();
 	m_binary_data = std::move(data);
+	m_name = name;
 
 	TelemetryRegion everything;
 	everything.start = m_data.get_start_time();

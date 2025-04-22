@@ -243,3 +243,11 @@ QStringList TestRunnerDialog::get_arguments(const QString &telemetry_path, bool 
 
 	return result;
 }
+
+QString TestRunnerDialog::get_name() const
+{
+	QString replay = m_replay_files[m_replay_file->currentIndex()];
+	QString name = "FPS Test " % QString::number(get_fps_test()) % " - " % replay % ".tlm";
+
+	return name;
+}

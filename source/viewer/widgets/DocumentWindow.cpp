@@ -276,11 +276,15 @@ void DocumentWindow::clear()
 	m_loaded_documents.clear();
 }
 
-void DocumentWindow::set_document_by_path(const QString &path)
+void DocumentWindow::set_document_by_path(const QString &path, const QString &name)
 {
 	try
 	{
 		TelemetryDocument *document = qApp->load_file(path);
+
+		if(!name.isEmpty())
+			document->set_name(name);
+
 		set_document(document);
 	}
 	catch(...)
@@ -543,11 +547,8 @@ void DocumentWindow::add_document(TelemetryDocument *document)
 	m_loaded_documents.push_back(entry);
 
 	{
-		const QString path = document->get_path();
-		const QFileInfo info(path);
-
 		QTreeWidgetItem *item = new QTreeWidgetItem();
-		item->setText(0, info.fileName());
+		item->setText(0, document->get_name());
 
 		m_documents_tree->addTopLevelItem(item);
 	}
@@ -734,6 +735,8 @@ void DocumentWindow::save_file()
 		if(!m_installations.empty() && base_path.isEmpty())
 			base_path = m_installations[m_installation_selector->currentIndex()].get_telemetry_path();
 
+		base_path = base_path % '/' % document.document->get_name();
+
 		QString path = QFileDialog::getSaveFileName(this, tr("Save Telemetry file"), base_path, tr("Telemetry File (*.tlm)"));
 
 		if(!path.isEmpty())
@@ -786,7 +789,7 @@ void DocumentWindow::run_fps_test()
 			QFileInfo info(full_result_path);
 
 			if(info.isFile())
-				set_document_by_path(full_result_path);
+				set_document_by_path(full_result_path, runner.get_name());
 		}
 	}
 }

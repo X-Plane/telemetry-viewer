@@ -21,6 +21,8 @@ public:
 	QString get_executable() const;
 	QStringList get_arguments(const QString &telemetry_path, bool escape_paths) const;
 
+	QString get_name() const;
+
 private:
 	uint32_t get_fps_test() const;
 

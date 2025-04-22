@@ -19,7 +19,7 @@ public:
 	~DocumentWindow() override;
 
 	void set_document(TelemetryDocument *document);
-	void set_document_by_path(const QString &path);
+	void set_document_by_path(const QString &path, const QString &name = "");
 
 	void add_document(TelemetryDocument *document);
 
