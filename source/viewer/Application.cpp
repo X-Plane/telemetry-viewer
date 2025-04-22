@@ -229,7 +229,7 @@ QVector<XplaneInstallation> Application::get_installations() const
 #if WIN || APL
 	installer_path = QStandardPaths::writableLocation(QStandardPaths::GenericConfigLocation) + "/" + install_file_name;
 #else
-		installer_path = QStandardPaths::writableLocation(QStandardPaths::HomeLocation) + "/.x-plane/" + install_file_name;
+	installer_path = QStandardPaths::writableLocation(QStandardPaths::HomeLocation) + "/.x-plane/" + install_file_name;
 #endif
 
 	QFileInfo info(installer_path);
@@ -303,7 +303,7 @@ int Application::run(int &argc, char **argv)
 	app.setStyleSheet(style_sheet);
 #else
 	QApplication::setStyle(QStyleFactory::create("Fusion"));
-	application app(argc, argv);
+	Application app(argc, argv);
 #endif
 
 	return exec();
