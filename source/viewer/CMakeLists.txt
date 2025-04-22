@@ -13,11 +13,9 @@ set(QT_COMPONENTS
 		Core
 		Widgets
 		Gui
-		Charts
-		OpenGL
-		OpenGLWidgets)
+		Charts)
 
-find_package(Qt6 6.7.0 REQUIRED COMPONENTS ${QT_COMPONENTS})
+find_package(Qt6 6.8.2 REQUIRED COMPONENTS ${QT_COMPONENTS})
 
 list(TRANSFORM QT_COMPONENTS PREPEND "Qt6::")
 
