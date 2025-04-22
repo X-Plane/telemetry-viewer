@@ -52,17 +52,10 @@ private Q_SLOTS:
 	[[maybe_unused]] void provider_item_changed(QTreeWidgetItem *item);
 
 private:
-	struct event_range
-	{
-		int32_t start, end;
-		QString name;
-	};
-
 	struct loaded_document
 	{
 		TelemetryDocument *document;
-		int32_t start_offset;
-		QVector<event_range> event_ranges;
+		double start_offset;
 	};
 
 	void clear();
@@ -70,6 +63,9 @@ private:
 
 	void set_time_range(int32_t start, int32_t end);
 	void touch_telemetry_file(const QFileInfo &file_info);
+
+	loaded_document &get_selected_document();
+	const loaded_document &get_selected_document() const;
 
 	QAction *add_toolbar_widget(QWidget *widget, const QString &text) const;
 	QAction *add_toolbar_spacer() const;

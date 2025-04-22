@@ -8,6 +8,20 @@
 #include <QString>
 #include <telemetry/container.h>
 
+struct TelemetryRegion
+{
+	enum class Type : uint8_t
+	{
+		Everything,
+		InMenu,
+		Flying
+	};
+
+	double start, end;
+	QString name;
+	Type type;
+};
+
 class TelemetryDocument
 {
 public:
@@ -20,6 +34,7 @@ public:
 
 	const QString &get_path() const { return m_path; }
 	const telemetry_container &get_data() const { return m_data; }
+	const QVector<TelemetryRegion> &get_regions() const { return m_regions; }
 
 protected:
 	TelemetryDocument() = default;
@@ -30,6 +45,8 @@ private:
 	QString m_path;
 	telemetry_container m_data;
 	std::vector<uint8_t> m_binary_data;
+
+	QVector<TelemetryRegion> m_regions;
 };
 
 #endif //TELEMETRY_DOCUMENT_H

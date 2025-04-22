@@ -226,8 +226,10 @@ void DocumentWindow::dropEvent(QDropEvent *event)
 				TelemetryDocument *document = qApp->load_file(url.toLocalFile());
 				add_document(document);
 			}
-			catch(...)
-			{}
+			catch(std::exception &e)
+			{
+				statusBar()->showMessage("Failed to load telemetry file. Error: " + QString(e.what()));
+			}
 		}
 
 		return;
@@ -313,13 +315,23 @@ void DocumentWindow::set_document(TelemetryDocument *document)
 	m_end_edit->set_range(container.get_start_time(), container.get_end_time());
 	m_end_edit->set_value(container.get_end_time());
 
-	auto &ranges = m_loaded_documents.front().event_ranges;
+	auto &regions = document->get_regions();
+	int selected_region = 0;
+	int index = 0;
 
-	for(auto &range : ranges)
-		m_event_picker->addItem(range.name);
+	for(auto &region : regions)
+	{
+		QString title = region.name + QString(" (") + TimePickerWidget::format_time(region.start) + " - " + TimePickerWidget::format_time(region.end) + QString(")");
+		m_event_picker->addItem(title);
 
-	m_event_picker->setCurrentIndex(ranges.size() > 1 ? 1 : 0);
-	range_changed();
+		if(region.type == TelemetryRegion::Type::Flying && selected_region == 0)
+			selected_region = index;
+
+		index ++;
+	}
+
+	m_event_picker->setCurrentIndex(selected_region);
+	event_range_changed(selected_region);
 
 	// Statistics view
 	{
@@ -508,87 +520,25 @@ void DocumentWindow::add_document(TelemetryDocument *document)
 	entry.document = document;
 	entry.start_offset = 0.0;
 
-	const auto &container = document->get_data();
-
-	if(!container.has_provider(provider_sim_apup::identifier))
-		return;
-
-	QVector<event_range> ranges;
-
+	if(!m_loaded_documents.empty())
 	{
-		// Figure out our event ranges
+		TelemetryDocument *root_document = m_loaded_documents.front().document;
+		auto &root_regions = root_document->get_regions();
+		auto &regions = document->get_regions();
+
+		if(root_regions.size() != regions.size())
+			throw std::range_error("Telemetry document has different timing regions");
+
+		size_t count = regions.size();
+		for(size_t i = 0; i < count; ++ i)
 		{
-			event_range everything;
+			if(root_regions[i].type != regions[i].type || root_regions[i].name != regions[i].name)
+				throw std::range_error("Telemetry document has different timing regions");
 
-			everything.start = container.get_start_time();
-			everything.end = container.get_end_time();
-			everything.name = "Everything";
-
-			ranges.push_back(everything);
-		}
-
-		if(container.has_provider(provider_sim_apup::identifier))
-		{
-			auto &do_world_events = provider_sim_apup::get_field(container, provider_sim_apup::do_world);
-			auto &aircraft_events = provider_sim_apup::get_field(container, provider_sim_apup::loaded_aircraft);
-
-			bool is_doing_world = false;
-			double start_timestamp = 0.0;
-			double end_timestamp = 0.0;
-
-			auto flush_range = [this, &ranges, &aircraft_events](double start, double end) {
-
-				// We want at least 12 seconds worth of data to add it to the timeline
-				if((end - start) > 12.0)
-				{
-					QString title;
-
-					try
-					{
-						title = aircraft_events.get_data_point_after_time(start + 5.0).value.get<const char *>();
-					}
-					catch(...)
-					{
-						title = "Event";
-					}
-
-					event_range range;
-					range.start = start + 8.0;
-					range.end = end - 3.0;
-					range.name = title + QString(" (") + TimePickerWidget::format_time(range.start) + " - " + TimePickerWidget::format_time(range.end) + QString(")");
-
-					ranges.push_back(range);
-				}
-
-			};
-
-			for(auto &data : do_world_events.get_data_points())
-			{
-				if(data.value.get<bool>() && !is_doing_world)
-				{
-					is_doing_world = true;
-					start_timestamp = data.timestamp;
-				}
-
-				if(data.value.get<bool>())
-					end_timestamp = data.timestamp;
-
-				if(!data.value.get<bool>() && is_doing_world)
-				{
-					is_doing_world = false;
-					flush_range(start_timestamp, end_timestamp);
-				}
-			}
-
-			if(is_doing_world)
-				flush_range(start_timestamp, end_timestamp);
+			if(entry.start_offset <= 0.0 && regions[i].type == TelemetryRegion::Type::Flying)
+				entry.start_offset = root_regions[i].start - regions[i].start;
 		}
 	}
-
-	entry.event_ranges = ranges;
-
-	if(!m_loaded_documents.empty())
-		entry.start_offset = m_loaded_documents.front().event_ranges[1].start - ranges[1].start;
 
 	m_loaded_documents.push_back(entry);
 
@@ -621,6 +571,14 @@ void DocumentWindow::add_document(TelemetryDocument *document)
 	}
 }
 
+DocumentWindow::loaded_document &DocumentWindow::get_selected_document()
+{
+	return m_loaded_documents.front();
+}
+const DocumentWindow::loaded_document &DocumentWindow::get_selected_document() const
+{
+	return m_loaded_documents.front();
+}
 
 void DocumentWindow::restore_state(QSettings &state)
 {
@@ -843,10 +801,10 @@ void DocumentWindow::event_range_changed(int index)
 	if(index == -1)
 		return;
 
-	auto &container = m_loaded_documents.front();
+	auto &regions = get_selected_document().document->get_regions();
 
-	set_time_range(container.event_ranges[index].start, container.event_ranges[index].end);
+	set_time_range(regions[index].start, regions[index].end);
 
-	m_start_edit->set_value(container.event_ranges[index].start);
-	m_end_edit->set_value(container.event_ranges[index].end);
+	m_start_edit->set_value(regions[index].start);
+	m_end_edit->set_value(regions[index].end);
 }
