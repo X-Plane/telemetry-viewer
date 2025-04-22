@@ -23,7 +23,7 @@ jobs:
     - uses: seanmiddleditch/gha-setup-ninja@master
     - uses: jurplel/install-qt-action@v4
       with:
-        version: '6.8.0'
+        version: '6.8.2'
         modules: 'qtcharts'
         cache: 'true'
 
