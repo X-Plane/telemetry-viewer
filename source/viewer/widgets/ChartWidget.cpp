@@ -6,6 +6,7 @@
 #include <telemetry/container.h>
 #include "ChartWidget.h"
 #include "ChartCallout.h"
+#include "ChartEvent.h"
 #include "utilities/Color.h"
 #include "utilities/PerformanceCalculator.h"
 #include "utilities/RunningAverage.h"
@@ -116,7 +117,6 @@ ChartWidget::ChartWidget(QWidget *parent) :
 	m_crosshairX = new QGraphicsLineItem(m_line_chart);
 	m_crosshairY = new QGraphicsLineItem(m_line_chart);
 
-	// Set line style for crosshairs (dashed, light gray)
 	QPen pen(QColor(100, 100, 100, 150));
 	pen.setStyle(Qt::DashLine);
 	pen.setWidth(1);
@@ -124,13 +124,8 @@ ChartWidget::ChartWidget(QWidget *parent) :
 	m_crosshairX->setPen(pen);
 	m_crosshairY->setPen(pen);
 
-	// Hide crosshairs initially
 	m_crosshairX->hide();
 	m_crosshairY->hide();
-
-	// Add crosshair lines to scene
-	scene()->addItem(m_crosshairX);
-	scene()->addItem(m_crosshairY);
 }
 ChartWidget::~ChartWidget()
 {
@@ -250,6 +245,7 @@ void ChartWidget::set_range(int32_t start, int32_t end)
 	}
 
 	rescale_axes();
+	Q_EMIT m_line_chart->plotAreaChanged(m_line_chart->plotArea());
 }
 
 void ChartWidget::set_type(Type type)
@@ -304,7 +300,19 @@ void ChartWidget::set_memory_scaling(MemoryScaling scaling)
 		add_data(field, color, 0);
 }
 
+void ChartWidget::add_event(const telemetry_event &event)
+{
+	uint32_t row = 0;
 
+	for(auto &item : m_events)
+	{
+		if(item->intersects_event(event))
+			row ++;
+	}
+
+	ChartEvent *item = new ChartEvent(m_line_chart, event, row);
+	m_events.append(item);
+}
 
 void ChartWidget::add_data(const telemetry_field *field, QColor color, int32_t time_offset)
 {

@@ -9,6 +9,7 @@
 #include "DocumentWindow.h"
 #include "TestRunnerDialog.h"
 #include "Application.h"
+#include "ChartEvent.h"
 
 #include "utilities/Color.h"
 #include "utilities/DataDecimator.h"
@@ -51,16 +52,6 @@ DocumentWindow::DocumentWindow()
 	m_splitter_vertical->setStretchFactor(0, 2);
 	m_splitter_vertical->setStretchFactor(1, 2);
 	m_splitter_vertical->setStretchFactor(2, 1);
-
-	connect(m_timeline_widget, &TimelineWidget::spanFocused, [this](uint64_t id){
-		auto model = m_timeline_tree->model();
-		auto x = model->match(model->index(0,0, {}), Qt::DisplayRole, QVariant::fromValue(id), 1, Qt::MatchFlag::MatchExactly|Qt::MatchFlag::MatchRecursive);
-		if(!x.empty())
-		{
-			m_timeline_tree->scrollTo(x.front(),QAbstractItemView::ScrollHint::PositionAtTop);
-			m_timeline_tree->selectionModel()->select(x.front(), QItemSelectionModel::SelectionFlag::ClearAndSelect|QItemSelectionModel::Rows);
-		}
-	});
 
 	m_installations = qApp->get_installations();
 
@@ -255,7 +246,6 @@ void DocumentWindow::clear()
 
 	m_providers_view->clear();
 	m_overview_view->clear();
-	m_timeline_tree->clear();
 
 	m_documents_tree->clear();
 
@@ -473,38 +463,8 @@ void DocumentWindow::set_document(TelemetryDocument *document)
 			item->setCheckState(0, Qt::CheckState::Checked);
 	}
 
-	{
-		auto create_span = [](const telemetry_event &event) -> QTreeWidgetItem * {
-			auto create_child_span = [](QTreeWidgetItem *root, const telemetry_event &event, auto &r) -> QTreeWidgetItem *
-			{
-				QString path;
-
-				for(auto &entry: event.get_entries())
-				{
-					if(entry.title == "path")
-						path = entry.value.get<const char *>();
-				}
-
-				QTreeWidgetItem *item = new QTreeWidgetItem(root);
-				item->setText(0, QString::number(event.get_id()));
-				item->setText(1, QString::number(std::ceil(event.get_duration() * 1000.0f)));
-				item->setText(2, path);
-
-				for (auto &child: event.get_children())
-					r(item, child, r);
-
-				return item;
-			};
-
-			return create_child_span(nullptr, event, create_child_span);
-		};
-
-
-		for(auto &event : container.get_events())
-			m_timeline_tree->addTopLevelItem(create_span(event));
-
-		m_timeline_widget->setTimelineSpans(container.get_events());
-	}
+	for(auto &event : container.get_events())
+		m_chart_view->add_event(event);
 }
 
 QAction *DocumentWindow::add_toolbar_widget(QWidget *widget, const QString &text) const

@@ -88,243 +88,172 @@
          <verstretch>0</verstretch>
         </sizepolicy>
        </property>
-       <layout class="QVBoxLayout" name="verticalLayout_2">
-        <property name="leftMargin">
-         <number>0</number>
-        </property>
-        <property name="topMargin">
-         <number>0</number>
-        </property>
-        <property name="rightMargin">
-         <number>0</number>
-        </property>
-        <property name="bottomMargin">
-         <number>0</number>
-        </property>
+       <layout class="QVBoxLayout" name="verticalLayout">
         <item>
-         <widget class="QTabWidget" name="tabWidget">
-          <property name="currentIndex">
-           <number>0</number>
-          </property>
-          <widget class="QWidget" name="page_0">
-           <attribute name="title">
-            <string>Samples</string>
-           </attribute>
-           <layout class="QVBoxLayout" name="verticalLayout">
-            <item>
-             <widget class="ChartWidget" name="m_chart_view"/>
-            </item>
-            <item>
-             <widget class="QWidget" name="widget" native="true">
-              <layout class="QHBoxLayout" name="horizontalLayout_5">
-               <item>
-                <widget class="QLabel" name="label">
-                 <property name="text">
-                  <string>Range:</string>
-                 </property>
-                </widget>
-               </item>
-               <item>
-                <widget class="QComboBox" name="m_event_picker">
-                 <property name="sizePolicy">
-                  <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-                   <horstretch>0</horstretch>
-                   <verstretch>0</verstretch>
-                  </sizepolicy>
-                 </property>
-                 <property name="minimumSize">
-                  <size>
-                   <width>240</width>
-                   <height>0</height>
-                  </size>
-                 </property>
-                </widget>
-               </item>
-               <item>
-                <spacer name="horizontalSpacer_4">
-                 <property name="orientation">
-                  <enum>Qt::Orientation::Horizontal</enum>
-                 </property>
-                 <property name="sizeType">
-                  <enum>QSizePolicy::Policy::Fixed</enum>
-                 </property>
-                 <property name="sizeHint" stdset="0">
-                  <size>
-                   <width>20</width>
-                   <height>20</height>
-                  </size>
-                 </property>
-                </spacer>
-               </item>
-               <item>
-                <widget class="QLabel" name="end_label">
-                 <property name="text">
-                  <string>Start:</string>
-                 </property>
-                </widget>
-               </item>
-               <item>
-                <spacer name="horizontalSpacer_3">
-                 <property name="orientation">
-                  <enum>Qt::Orientation::Horizontal</enum>
-                 </property>
-                 <property name="sizeHint" stdset="0">
-                  <size>
-                   <width>40</width>
-                   <height>20</height>
-                  </size>
-                 </property>
-                </spacer>
-               </item>
-               <item>
-                <widget class="TimePickerWidget" name="m_start_edit" native="true">
-                 <property name="minimumSize">
-                  <size>
-                   <width>80</width>
-                   <height>0</height>
-                  </size>
-                 </property>
-                </widget>
-               </item>
-               <item>
-                <spacer name="horizontalSpacer_2">
-                 <property name="orientation">
-                  <enum>Qt::Orientation::Horizontal</enum>
-                 </property>
-                 <property name="sizeType">
-                  <enum>QSizePolicy::Policy::Fixed</enum>
-                 </property>
-                 <property name="sizeHint" stdset="0">
-                  <size>
-                   <width>20</width>
-                   <height>20</height>
-                  </size>
-                 </property>
-                </spacer>
-               </item>
-               <item>
-                <widget class="QLabel" name="start_label">
-                 <property name="text">
-                  <string>End:</string>
-                 </property>
-                </widget>
-               </item>
-               <item>
-                <widget class="TimePickerWidget" name="m_end_edit" native="true">
-                 <property name="minimumSize">
-                  <size>
-                   <width>80</width>
-                   <height>0</height>
-                  </size>
-                 </property>
-                </widget>
-               </item>
-               <item>
-                <spacer name="horizontalSpacer">
-                 <property name="orientation">
-                  <enum>Qt::Orientation::Horizontal</enum>
-                 </property>
-                 <property name="sizeHint" stdset="0">
-                  <size>
-                   <width>986</width>
-                   <height>20</height>
-                  </size>
-                 </property>
-                </spacer>
-               </item>
-               <item>
-                <widget class="QComboBox" name="m_memory_scaling">
-                 <item>
-                  <property name="text">
-                   <string>Bytes</string>
-                  </property>
-                 </item>
-                 <item>
-                  <property name="text">
-                   <string>Kilobytes</string>
-                  </property>
-                 </item>
-                 <item>
-                  <property name="text">
-                   <string>Megabytes</string>
-                  </property>
-                 </item>
-                 <item>
-                  <property name="text">
-                   <string>Gigabytes</string>
-                  </property>
-                 </item>
-                </widget>
-               </item>
-               <item>
-                <widget class="QComboBox" name="m_mode_selector">
-                 <item>
-                  <property name="text">
-                   <string>Timeline (Raw)</string>
-                  </property>
-                 </item>
-                 <item>
-                  <property name="text">
-                   <string>Timeline (Running average)</string>
-                  </property>
-                 </item>
-                 <item>
-                  <property name="text">
-                   <string>Distribution</string>
-                  </property>
-                 </item>
-                </widget>
-               </item>
-              </layout>
-             </widget>
-            </item>
-           </layout>
-          </widget>
-          <widget class="QWidget" name="m_timeline_page">
-           <attribute name="title">
-            <string>Events</string>
-           </attribute>
-           <layout class="QVBoxLayout" name="verticalLayout">
-            <item>
-             <widget class="QSplitter" name="splitter_2">
-              <property name="sizePolicy">
-               <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
-                <horstretch>0</horstretch>
-                <verstretch>0</verstretch>
-               </sizepolicy>
+         <widget class="ChartWidget" name="m_chart_view"/>
+        </item>
+        <item>
+         <widget class="QWidget" name="widget" native="true">
+          <layout class="QHBoxLayout" name="horizontalLayout_5">
+           <item>
+            <widget class="QLabel" name="label">
+             <property name="text">
+              <string>Range:</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QComboBox" name="m_event_picker">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <property name="minimumSize">
+              <size>
+               <width>240</width>
+               <height>0</height>
+              </size>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <spacer name="horizontalSpacer_4">
+             <property name="orientation">
+              <enum>Qt::Orientation::Horizontal</enum>
+             </property>
+             <property name="sizeType">
+              <enum>QSizePolicy::Policy::Fixed</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>20</width>
+               <height>20</height>
+              </size>
+             </property>
+            </spacer>
+           </item>
+           <item>
+            <widget class="QLabel" name="end_label">
+             <property name="text">
+              <string>Start:</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <spacer name="horizontalSpacer_3">
+             <property name="orientation">
+              <enum>Qt::Orientation::Horizontal</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>40</width>
+               <height>20</height>
+              </size>
+             </property>
+            </spacer>
+           </item>
+           <item>
+            <widget class="TimePickerWidget" name="m_start_edit" native="true">
+             <property name="minimumSize">
+              <size>
+               <width>80</width>
+               <height>0</height>
+              </size>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <spacer name="horizontalSpacer_2">
+             <property name="orientation">
+              <enum>Qt::Orientation::Horizontal</enum>
+             </property>
+             <property name="sizeType">
+              <enum>QSizePolicy::Policy::Fixed</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>20</width>
+               <height>20</height>
+              </size>
+             </property>
+            </spacer>
+           </item>
+           <item>
+            <widget class="QLabel" name="start_label">
+             <property name="text">
+              <string>End:</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="TimePickerWidget" name="m_end_edit" native="true">
+             <property name="minimumSize">
+              <size>
+               <width>80</width>
+               <height>0</height>
+              </size>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <spacer name="horizontalSpacer">
+             <property name="orientation">
+              <enum>Qt::Orientation::Horizontal</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>986</width>
+               <height>20</height>
+              </size>
+             </property>
+            </spacer>
+           </item>
+           <item>
+            <widget class="QComboBox" name="m_memory_scaling">
+             <item>
+              <property name="text">
+               <string>Bytes</string>
               </property>
-              <property name="orientation">
-               <enum>Qt::Orientation::Vertical</enum>
+             </item>
+             <item>
+              <property name="text">
+               <string>Kilobytes</string>
               </property>
-              <widget class="TimelineWidget" name="m_timeline_widget">
-               <property name="sizePolicy">
-                <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-                 <horstretch>0</horstretch>
-                 <verstretch>1</verstretch>
-                </sizepolicy>
-               </property>
-              </widget>
-              <widget class="QTreeWidget" name="m_timeline_tree">
-               <column>
-                <property name="text">
-                 <string>Event</string>
-                </property>
-               </column>
-               <column>
-                <property name="text">
-                 <string>Duration</string>
-                </property>
-               </column>
-               <column>
-                <property name="text">
-                 <string>Path</string>
-                </property>
-               </column>
-              </widget>
-             </widget>
-            </item>
-           </layout>
-          </widget>
+             </item>
+             <item>
+              <property name="text">
+               <string>Megabytes</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>Gigabytes</string>
+              </property>
+             </item>
+            </widget>
+           </item>
+           <item>
+            <widget class="QComboBox" name="m_mode_selector">
+             <item>
+              <property name="text">
+               <string>Timeline (Raw)</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>Timeline (Running average)</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>Distribution</string>
+              </property>
+             </item>
+            </widget>
+           </item>
+          </layout>
          </widget>
         </item>
        </layout>
@@ -536,15 +465,6 @@
    </slots>
   </customwidget>
   <customwidget>
-   <class>TimelineWidget</class>
-   <extends>QGraphicsView</extends>
-   <header>widgets/TimelineWidget.h</header>
-   <slots>
-    <slot>zoomIn()</slot>
-    <slot>zoomOut()</slot>
-   </slots>
-  </customwidget>
-  <customwidget>
    <class>QChartView</class>
    <extends>QGraphicsView</extends>
    <header location="global">QtCharts/QtCharts</header>
@@ -598,54 +518,6 @@
     <hint type="sourcelabel">
      <x>-1</x>
      <y>-1</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>901</x>
-     <y>551</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>m_start_edit</sender>
-   <signal>value_changed(int)</signal>
-   <receiver>DocumentWindow</receiver>
-   <slot>range_changed()</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>1110</x>
-     <y>1059</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>901</x>
-     <y>551</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>m_end_edit</sender>
-   <signal>value_changed(int)</signal>
-   <receiver>DocumentWindow</receiver>
-   <slot>range_changed()</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>1265</x>
-     <y>1059</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>901</x>
-     <y>551</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>m_event_picker</sender>
-   <signal>currentIndexChanged(int)</signal>
-   <receiver>DocumentWindow</receiver>
-   <slot>event_range_changed(int)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>177</x>
-     <y>1060</y>
     </hint>
     <hint type="destinationlabel">
      <x>901</x>
@@ -710,6 +582,54 @@
     <hint type="sourcelabel">
      <x>-1</x>
      <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>901</x>
+     <y>551</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>m_start_edit</sender>
+   <signal>value_changed(int)</signal>
+   <receiver>DocumentWindow</receiver>
+   <slot>range_changed()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>1110</x>
+     <y>1059</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>901</x>
+     <y>551</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>m_end_edit</sender>
+   <signal>value_changed(int)</signal>
+   <receiver>DocumentWindow</receiver>
+   <slot>range_changed()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>1265</x>
+     <y>1059</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>901</x>
+     <y>551</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>m_event_picker</sender>
+   <signal>currentIndexChanged(int)</signal>
+   <receiver>DocumentWindow</receiver>
+   <slot>event_range_changed(int)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>177</x>
+     <y>1060</y>
     </hint>
     <hint type="destinationlabel">
      <x>901</x>

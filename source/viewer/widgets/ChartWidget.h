@@ -8,8 +8,10 @@
 #include <QtCharts/QtCharts>
 #include <QChartView>
 #include <telemetry/provider.h>
+#include <telemetry/event.h>
 
 class ChartCallout;
+class ChartEvent;
 
 class ChartWidget : public QChartView
 {
@@ -38,6 +40,8 @@ public:
 
 	void show_data(const telemetry_field *field);
 	void hide_data(const telemetry_field *field);
+
+	void add_event(const telemetry_event &event);
 
 	void clear();
 
@@ -123,6 +127,8 @@ private:
 	QValueAxis *m_timeline_axis;
 	QBarCategoryAxis *m_category_axis;
 	QVector<chart_axis *> m_axes;
+
+	QVector<ChartEvent *> m_events;
 
 	ChartCallout *m_tooltip;
 	QGraphicsLineItem *m_crosshairX;

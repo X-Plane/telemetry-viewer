@@ -38,6 +38,8 @@ set(SOURCES
 		utilities/Settings.h
 		widgets/ChartCallout.cpp
 		widgets/ChartCallout.h
+		widgets/ChartEvent.cpp
+		widgets/ChartEvent.h
 		widgets/ChartWidget.cpp
 		widgets/ChartWidget.h
 		widgets/DocumentWindow.ui
@@ -48,8 +50,6 @@ set(SOURCES
 		widgets/TestRunnerDialog.h
 		widgets/TimePickerWidget.cpp
 		widgets/TimePickerWidget.h
-		widgets/TimelineWidget.cpp
-		widgets/TimelineWidget.h
 		resources/resources.qrc)
 
 set(DEFINITIONS

@@ -15,7 +15,7 @@ ChartCallout::ChartCallout(QChart *chart) :
 	QGraphicsItem(chart),
 	m_chart(chart)
 {
-	setZValue(10);
+	setZValue(5);
 }
 
 QRectF ChartCallout::boundingRect() const
