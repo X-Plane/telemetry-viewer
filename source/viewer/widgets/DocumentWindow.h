@@ -20,6 +20,7 @@ public:
 
 	void set_document(TelemetryDocument *document);
 	void set_document_by_path(const QString &path, const QString &name = "");
+	void set_documents_by_paths(const QStringList &paths);
 
 	void add_document(TelemetryDocument *document);
 
@@ -62,7 +63,6 @@ private:
 	void set_field_enabled(const telemetry_field *field, bool enable);
 
 	void set_time_range(int32_t start, int32_t end);
-	void touch_telemetry_file(const QFileInfo &file_info);
 
 	loaded_document &get_selected_document();
 	const loaded_document &get_selected_document() const;

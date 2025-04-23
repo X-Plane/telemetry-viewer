@@ -235,23 +235,12 @@ void DocumentWindow::dropEvent(QDropEvent *event)
 		return;
 	}
 
-	if(urls.size() == 1)
-	{
-		const QString path = urls[0].toLocalFile();
-		set_document_by_path(path);
-	}
-	else
-	{
-		for(int i = 0; i < urls.size(); ++ i)
-		{
-			const QString path = urls[i].toLocalFile();
+	QStringList paths;
 
-			if(i == 0)
-				set_document_by_path(path);
-			else
-				qApp->open_file(path);
-		}
-	}
+	for(auto &url : urls)
+		paths.append(url.toLocalFile());
+
+	set_documents_by_paths(paths);
 }
 
 
@@ -294,6 +283,28 @@ void DocumentWindow::set_document_by_path(const QString &path, const QString &na
 	}
 }
 
+void DocumentWindow::set_documents_by_paths(const QStringList &paths)
+{
+	clear();
+
+	for(auto &path : paths)
+	{
+		try
+		{
+			TelemetryDocument *document = qApp->load_file(path);
+
+			if(m_loaded_documents.isEmpty())
+				set_document(document);
+			else
+				add_document(document);
+		}
+		catch(...)
+		{
+			statusBar()->showMessage("Failed to load telemetry file!");
+		}
+	}
+}
+
 void DocumentWindow::set_document(TelemetryDocument *document)
 {
 	clear();
@@ -306,7 +317,10 @@ void DocumentWindow::set_document(TelemetryDocument *document)
 	const QString path = document->get_path();
 	const QFileInfo info(path);
 
-	m_base_dir = info.absolutePath();
+	QString file_path = info.filePath();
+	QString file_name = info.fileName();
+
+	file_path.remove(file_path.length() - file_name.length(), file_name.length());
 
 	setWindowFilePath(path);
 	statusBar()->showMessage("Loaded " + path);
@@ -583,34 +597,63 @@ const DocumentWindow::loaded_document &DocumentWindow::get_selected_document() c
 
 void DocumentWindow::restore_state(QSettings &state)
 {
+	clear();
+
 	restoreGeometry(state.value("geometry").toByteArray());
 
-	QString path = state.value("file", "").toString();
-	QFileInfo file(path);
-
-	if(file.exists())
 	{
-		set_document_by_path(file.filePath());
+		const int count = state.beginReadArray("files");
+		QStringList paths;
 
-		int32_t start_value = state.value("start", m_start_edit->get_value()).toInt();
-		int32_t end_value = state.value("end", m_end_edit->get_value()).toInt();
+		for(int i = 0; i < count; ++ i)
+		{
+			state.setArrayIndex(i);
 
-		set_time_range(start_value, end_value);
+			QString path = state.value("path").toString();
+			QFileInfo file(path);
+
+			if(file.exists())
+				paths.append(path);
+		}
+
+		state.endArray();
+
+		set_documents_by_paths(paths);
 	}
+
+
+	int32_t start_value = state.value("start", m_start_edit->get_value()).toInt();
+	int32_t end_value = state.value("end", m_end_edit->get_value()).toInt();
+	int32_t index = state.value("region", m_event_picker->currentIndex()).toInt();
+
+	m_start_edit->set_value(start_value);
+	m_end_edit->set_value(end_value);
+	m_event_picker->setCurrentIndex(index);
 }
 
 void DocumentWindow::save_state(QSettings &state) const
 {
-	QString path = windowFilePath();
-
 	state.setValue("geometry", saveGeometry());
 
-	if(!path.isEmpty())
+	state.beginWriteArray("files");
+
+	int index = 0;
+
+	for(auto &document : m_loaded_documents)
 	{
-		state.setValue("file", path);
-		state.setValue("start", m_start_edit->get_value());
-		state.setValue("end", m_end_edit->get_value());
+		TelemetryDocument *doc = document.document;
+		if(doc->get_path().isEmpty())
+			continue;
+
+		state.setArrayIndex(index ++);
+		state.setValue("path", document.document->get_path());
 	}
+
+	state.endArray();
+
+	state.setValue("start", m_start_edit->get_value());
+	state.setValue("end", m_end_edit->get_value());
+	state.setValue("region", m_event_picker->currentIndex());
 }
 
  void DocumentWindow::set_time_range(int32_t start, int32_t end)
@@ -713,13 +756,31 @@ void DocumentWindow::open_file()
 	if(!m_installations.empty() && base_path.isEmpty())
 		base_path = m_installations[m_installation_selector->currentIndex()].get_telemetry_path();
 
-	QString path = QFileDialog::getOpenFileName(this, tr("Open Telemetry file"), base_path, tr("Telemetry File (*.tlm)"));
-	QFileInfo info(path);
+	QStringList paths = QFileDialog::getOpenFileNames(this, tr("Open Telemetry file"), base_path, tr("Telemetry File (*.tlm)"));
 
-	if(info.exists())
+	clear();
+
+	for(auto &path : paths)
 	{
-		touch_telemetry_file(info);
-		set_document_by_path(path);
+		QFileInfo info(path);
+
+		if(info.exists())
+		{
+			try
+			{
+				TelemetryDocument *document = qApp->load_file(path);
+
+				if(m_loaded_documents.empty())
+					set_document(document);
+				else
+					add_document(document);
+			}
+			catch(...)
+			{
+				set_document(nullptr);
+				statusBar()->showMessage("Failed to load telemetry file!");
+			}
+		}
 	}
 }
 
@@ -742,16 +803,6 @@ void DocumentWindow::save_file()
 		if(!path.isEmpty())
 			document.document->save(path);
 	}
-}
-
-void DocumentWindow::touch_telemetry_file(const QFileInfo &file_info)
-{
-	QString file_path = file_info.filePath();
-	QString file_name = file_info.fileName();
-
-	file_path.remove(file_path.length() - file_name.length(), file_name.length());
-
-	m_base_dir = file_path;
 }
 
 void DocumentWindow::run_fps_test()
