@@ -136,9 +136,8 @@ void Application::open_file(const QString &path)
 	{
 		TelemetryDocument *document = load_file(path);
 
-		DocumentWindow *window = new DocumentWindow();
+		DocumentWindow *window = new DocumentWindow(document);
 		window->show();
-		window->set_document(document);
 
 		m_document_windows.push_back(window);
 	}

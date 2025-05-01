@@ -21,7 +21,7 @@ static QColor get_color_for_telemetry_field(const telemetry_field *field)
 }
 
 
-DocumentWindow::DocumentWindow()
+DocumentWindow::DocumentWindow(TelemetryDocument *document)
 {
 	setupUi(this);
 
@@ -83,6 +83,9 @@ DocumentWindow::DocumentWindow()
 	});
 
 	statusBar()->showMessage("Ready");
+
+	if(document)
+		add_document(document);
 }
 
 DocumentWindow::~DocumentWindow()
@@ -104,7 +107,8 @@ void DocumentWindow::populate_recent_items()
 	for(auto &action : m_recent_file_actions)
 	{
 		connect(action.get(), &QAction::triggered, [this, action = action.get()] {
-			set_document_by_path(action->data().toString());
+			clear();
+			add_document_by_path(action->data().toString());
 		});
 
 		m_menu_recents->addAction(action.get());
@@ -238,9 +242,9 @@ void DocumentWindow::dropEvent(QDropEvent *event)
 	QStringList paths;
 
 	for(auto &url : urls)
-		paths.append(url.toLocalFile());
-
-	set_documents_by_paths(paths);
+	{
+		add_document_by_path(url.toLocalFile());
+	}
 }
 
 
@@ -265,7 +269,7 @@ void DocumentWindow::clear()
 	m_loaded_documents.clear();
 }
 
-void DocumentWindow::set_document_by_path(const QString &path, const QString &name)
+void DocumentWindow::add_document_by_path(const QString &path, const QString &name)
 {
 	try
 	{
@@ -274,236 +278,11 @@ void DocumentWindow::set_document_by_path(const QString &path, const QString &na
 		if(!name.isEmpty())
 			document->set_name(name);
 
-		set_document(document);
+		add_document(document);
 	}
 	catch(...)
 	{
-		set_document(nullptr);
-		statusBar()->showMessage("Failed to load telemetry file!");
-	}
-}
-
-void DocumentWindow::set_documents_by_paths(const QStringList &paths)
-{
-	clear();
-
-	for(auto &path : paths)
-	{
-		try
-		{
-			TelemetryDocument *document = qApp->load_file(path);
-
-			if(m_loaded_documents.isEmpty())
-				set_document(document);
-			else
-				add_document(document);
-		}
-		catch(...)
-		{
-			statusBar()->showMessage("Failed to load telemetry file!");
-		}
-	}
-}
-
-void DocumentWindow::set_document(TelemetryDocument *document)
-{
-	clear();
-
-	if(!document)
-		return;
-
-	add_document(document);
-
-	const QString path = document->get_path();
-	const QFileInfo info(path);
-
-	QString file_path = info.filePath();
-	QString file_name = info.fileName();
-
-	file_path.remove(file_path.length() - file_name.length(), file_name.length());
-
-	setWindowFilePath(path);
-	statusBar()->showMessage("Loaded " + path);
-
-	const auto &container = document->get_data();
-
-	m_start_edit->set_range(container.get_start_time(), container.get_end_time());
-	m_start_edit->set_value(container.get_start_time());
-
-	m_end_edit->set_range(container.get_start_time(), container.get_end_time());
-	m_end_edit->set_value(container.get_end_time());
-
-	auto &regions = document->get_regions();
-	int selected_region = 0;
-	int index = 0;
-
-	for(auto &region : regions)
-	{
-		QString title = region.name + QString(" (") + TimePickerWidget::format_time(region.start) + " - " + TimePickerWidget::format_time(region.end) + QString(")");
-		m_event_picker->addItem(title);
-
-		if(region.type == TelemetryRegion::Type::Flying && selected_region == 0)
-			selected_region = index;
-
-		index ++;
-	}
-
-	m_event_picker->setCurrentIndex(selected_region);
-	event_range_changed(selected_region);
-
-	// Statistics view
-	{
-		QList<QTreeWidgetItem *> items;
-
-		for(auto &stat : container.get_statistics())
-		{
-			QTreeWidgetItem *root_item = new QTreeWidgetItem();
-			root_item->setText(0, QString::fromStdString(stat.get_title()));
-
-			for(auto &entry : stat.get_entries())
-			{
-				QTreeWidgetItem *stat_item = new QTreeWidgetItem(root_item);
-				stat_item->setText(0, QString::fromStdString(entry.title));
-
-				switch(entry.value.type)
-				{
-					case telemetry_type::uint8:
-					case telemetry_type::uint16:
-					case telemetry_type::uint32:
-					case telemetry_type::uint64:
-						stat_item->setText(1, QString::number(entry.value.get<uint64_t>()));
-						break;
-
-					case telemetry_type::int32:
-					case telemetry_type::int64:
-						stat_item->setText(1, QString::number(entry.value.get<int64_t>()));
-						break;
-
-					case telemetry_type::f32:
-					case telemetry_type::f64:
-						stat_item->setText(1, QString::number(entry.value.get<double>()));
-						break;
-
-					case telemetry_type::string:
-						stat_item->setText(1, QString::fromStdString(entry.value.string));
-						stat_item->setToolTip(1, QString::fromStdString(entry.value.string));
-						break;
-
-					default:
-						stat_item->setText(1, "Unsupported type");
-				}
-
-
-			}
-
-			items.push_back(root_item);
-		}
-
-		m_overview_view->addTopLevelItems(items);
-
-		for(auto &item : items)
-			item->setExpanded(true);
-	}
-
-	// Add all the telemetry providers
-	{
-		QList<QTreeWidgetItem *> top_level_items;
-		QList<QTreeWidgetItem *> expanded_items;
-		QList<QTreeWidgetItem *> enabled_items;
-
-		{
-			for(auto &provider: container.get_providers())
-			{
-				QTreeWidgetItem *provider_item = new QTreeWidgetItem();
-				provider_item->setText(0, QString::fromStdString(provider.get_title()));
-				provider_item->setData(0, Qt::UserRole, QVariant::fromValue(&provider));
-
-				top_level_items.push_back(provider_item);
-
-				if(provider.get_identifier() == provider_timing::identifier)
-					expanded_items.push_back(provider_item);
-
-				for(auto &field: provider.get_fields())
-				{
-					const telemetry_type type = field.get_type();
-					const bool can_chart = !(type == telemetry_type::vec2 || type == telemetry_type::dvec2);
-
-					if(field.empty() || !can_chart)
-						continue;
-
-					QTreeWidgetItem *item = new QTreeWidgetItem(provider_item);
-					item->setCheckState(0, Qt::CheckState::Unchecked);
-					item->setData(0, Qt::UserRole, QVariant::fromValue(&field));
-					item->setBackground(0, get_color_for_telemetry_field(&field));
-					item->setText(1, QString::fromStdString(field.get_title()));
-
-					switch(field.get_unit())
-					{
-						case telemetry_unit::value:
-							item->setToolTip(1, "Raw value");
-							break;
-						case telemetry_unit::fps:
-							item->setToolTip(1, "FPS");
-							break;
-						case telemetry_unit::time:
-							item->setToolTip(1, "Time");
-							break;
-						case telemetry_unit::memory:
-							item->setToolTip(1, "Memory");
-							break;
-						case telemetry_unit::duration:
-							item->setToolTip(1, "Duration");
-							break;
-					}
-
-					if(provider.get_identifier() == provider_timing::identifier)
-					{
-						if(field.get_id() == provider_timing::cpu || field.get_id() == provider_timing::gpu)
-							enabled_items.push_back(item);
-					}
-				}
-			}
-		}
-
-		m_providers_view->addTopLevelItems(top_level_items);
-
-		for(auto &item : expanded_items)
-			item->setExpanded(true);
-		for(auto &item : enabled_items)
-			item->setCheckState(0, Qt::CheckState::Checked);
-	}
-
-	{
-		auto create_span = [](const telemetry_event &event) -> QTreeWidgetItem * {
-			auto create_child_span = [](QTreeWidgetItem *root, const telemetry_event &event, auto &r) -> QTreeWidgetItem *
-			{
-				QString path;
-
-				for(auto &entry: event.get_entries())
-				{
-					if(entry.title == "path")
-						path = entry.value.get<const char *>();
-				}
-
-				QTreeWidgetItem *item = new QTreeWidgetItem(root);
-				item->setText(0, QString::number(event.get_id()));
-				item->setText(1, QString::number(std::ceil(event.get_duration() * 1000.0f)));
-				item->setText(2, path);
-
-				for (auto &child: event.get_children())
-					r(item, child, r);
-
-				return item;
-			};
-
-			return create_child_span(nullptr, event, create_child_span);
-		};
-
-
-		for(auto &event : container.get_events())
-			m_timeline_tree->addTopLevelItem(create_span(event));
-
-		m_timeline_widget->setTimelineSpans(container.get_events());
+		statusBar()->showMessage("Failed to load telemetry file " + path);
 	}
 }
 
@@ -534,11 +313,13 @@ QAction *DocumentWindow::add_toolbar_spacer() const
 
 void DocumentWindow::add_document(TelemetryDocument *document)
 {
+	const bool is_first_document = m_loaded_documents.isEmpty();
+
 	loaded_document entry;
 	entry.document = document;
 	entry.start_offset = 0.0;
 
-	if(!m_loaded_documents.empty())
+	if(!is_first_document)
 	{
 		TelemetryDocument *root_document = m_loaded_documents.front().document;
 		auto &root_regions = root_document->get_regions();
@@ -565,24 +346,224 @@ void DocumentWindow::add_document(TelemetryDocument *document)
 		item->setText(0, document->get_name());
 
 		m_documents_tree->addTopLevelItem(item);
+
+		if(is_first_document)
+			item->setSelected(true);
 	}
 
-	for(auto &field : m_enabled_fields)
+	if(is_first_document)
 	{
-		const auto &data = entry.document->get_data();
-		if(!data.has_provider(field->get_provider_id()))
-			continue;
+		const QString path = document->get_path();
+		const QFileInfo info(path);
 
-		const auto &provider = data.get_provider(field->get_provider_id());
-		if(!provider.has_field(field->get_id()))
-			continue;
+		QString file_path = info.filePath();
+		QString file_name = info.fileName();
 
-		const telemetry_field &additional_field = provider.get_field(field->get_id());
+		file_path.remove(file_path.length() - file_name.length(), file_name.length());
 
-		QColor color = get_color_for_telemetry_field(field);
-		color.setAlpha(128);
+		setWindowFilePath(path);
+		statusBar()->showMessage("Loaded " + path);
 
-		m_chart_view->add_data(&additional_field, color, entry.start_offset);
+		const auto &container = document->get_data();
+
+		m_start_edit->set_range(container.get_start_time(), container.get_end_time());
+		m_start_edit->set_value(container.get_start_time());
+
+		m_end_edit->set_range(container.get_start_time(), container.get_end_time());
+		m_end_edit->set_value(container.get_end_time());
+
+		auto &regions = document->get_regions();
+		int selected_region = 0;
+		int index = 0;
+
+		for(auto &region : regions)
+		{
+			QString title = region.name + QString(" (") + TimePickerWidget::format_time(region.start) + " - " + TimePickerWidget::format_time(region.end) + QString(")");
+			m_event_picker->addItem(title);
+
+			if(region.type == TelemetryRegion::Type::Flying && selected_region == 0)
+				selected_region = index;
+
+			index ++;
+		}
+
+		m_event_picker->setCurrentIndex(selected_region);
+		event_range_changed(selected_region);
+
+		// Statistics view
+		{
+			QList<QTreeWidgetItem *> items;
+
+			for(auto &stat : container.get_statistics())
+			{
+				QTreeWidgetItem *root_item = new QTreeWidgetItem();
+				root_item->setText(0, QString::fromStdString(stat.get_title()));
+
+				for(auto &entry : stat.get_entries())
+				{
+					QTreeWidgetItem *stat_item = new QTreeWidgetItem(root_item);
+					stat_item->setText(0, QString::fromStdString(entry.title));
+
+					switch(entry.value.type)
+					{
+						case telemetry_type::uint8:
+						case telemetry_type::uint16:
+						case telemetry_type::uint32:
+						case telemetry_type::uint64:
+							stat_item->setText(1, QString::number(entry.value.get<uint64_t>()));
+							break;
+
+						case telemetry_type::int32:
+						case telemetry_type::int64:
+							stat_item->setText(1, QString::number(entry.value.get<int64_t>()));
+							break;
+
+						case telemetry_type::f32:
+						case telemetry_type::f64:
+							stat_item->setText(1, QString::number(entry.value.get<double>()));
+							break;
+
+						case telemetry_type::string:
+							stat_item->setText(1, QString::fromStdString(entry.value.string));
+							stat_item->setToolTip(1, QString::fromStdString(entry.value.string));
+							break;
+
+						default:
+							stat_item->setText(1, "Unsupported type");
+					}
+
+
+				}
+
+				items.push_back(root_item);
+			}
+
+			m_overview_view->addTopLevelItems(items);
+
+			for(auto &item : items)
+				item->setExpanded(true);
+		}
+
+		// Add all the telemetry providers
+		{
+			QList<QTreeWidgetItem *> top_level_items;
+			QList<QTreeWidgetItem *> expanded_items;
+			QList<QTreeWidgetItem *> enabled_items;
+
+			{
+				for(auto &provider: container.get_providers())
+				{
+					QTreeWidgetItem *provider_item = new QTreeWidgetItem();
+					provider_item->setText(0, QString::fromStdString(provider.get_title()));
+					provider_item->setData(0, Qt::UserRole, QVariant::fromValue(&provider));
+
+					top_level_items.push_back(provider_item);
+
+					if(provider.get_identifier() == provider_timing::identifier)
+						expanded_items.push_back(provider_item);
+
+					for(auto &field: provider.get_fields())
+					{
+						const telemetry_type type = field.get_type();
+						const bool can_chart = !(type == telemetry_type::vec2 || type == telemetry_type::dvec2);
+
+						if(field.empty() || !can_chart)
+							continue;
+
+						QTreeWidgetItem *item = new QTreeWidgetItem(provider_item);
+						item->setCheckState(0, Qt::CheckState::Unchecked);
+						item->setData(0, Qt::UserRole, QVariant::fromValue(&field));
+						item->setBackground(0, get_color_for_telemetry_field(&field));
+						item->setText(1, QString::fromStdString(field.get_title()));
+
+						switch(field.get_unit())
+						{
+							case telemetry_unit::value:
+								item->setToolTip(1, "Raw value");
+								break;
+							case telemetry_unit::fps:
+								item->setToolTip(1, "FPS");
+								break;
+							case telemetry_unit::time:
+								item->setToolTip(1, "Time");
+								break;
+							case telemetry_unit::memory:
+								item->setToolTip(1, "Memory");
+								break;
+							case telemetry_unit::duration:
+								item->setToolTip(1, "Duration");
+								break;
+						}
+
+						if(provider.get_identifier() == provider_timing::identifier)
+						{
+							if(field.get_id() == provider_timing::cpu || field.get_id() == provider_timing::gpu)
+								enabled_items.push_back(item);
+						}
+					}
+				}
+			}
+
+			m_providers_view->addTopLevelItems(top_level_items);
+
+			for(auto &item : expanded_items)
+				item->setExpanded(true);
+			for(auto &item : enabled_items)
+				item->setCheckState(0, Qt::CheckState::Checked);
+		}
+
+		{
+			auto create_span = [](const telemetry_event &event) -> QTreeWidgetItem * {
+				auto create_child_span = [](QTreeWidgetItem *root, const telemetry_event &event, auto &r) -> QTreeWidgetItem *
+				{
+					QString path;
+
+					for(auto &entry: event.get_entries())
+					{
+						if(entry.title == "path")
+							path = entry.value.get<const char *>();
+					}
+
+					QTreeWidgetItem *item = new QTreeWidgetItem(root);
+					item->setText(0, QString::number(event.get_id()));
+					item->setText(1, QString::number(std::ceil(event.get_duration() * 1000.0f)));
+					item->setText(2, path);
+
+					for (auto &child: event.get_children())
+						r(item, child, r);
+
+					return item;
+				};
+
+				return create_child_span(nullptr, event, create_child_span);
+			};
+
+
+			for(auto &event : container.get_events())
+				m_timeline_tree->addTopLevelItem(create_span(event));
+
+			m_timeline_widget->setTimelineSpans(container.get_events());
+		}
+	}
+	else
+	{
+		for(auto &field : m_enabled_fields)
+		{
+			const auto &data = entry.document->get_data();
+			if(!data.has_provider(field->get_provider_id()))
+				continue;
+
+			const auto &provider = data.get_provider(field->get_provider_id());
+			if(!provider.has_field(field->get_id()))
+				continue;
+
+			const telemetry_field &additional_field = provider.get_field(field->get_id());
+
+			QColor color = get_color_for_telemetry_field(field);
+			color.setAlpha(128);
+
+			m_chart_view->add_data(&additional_field, color, entry.start_offset);
+		}
 	}
 }
 
@@ -613,14 +594,11 @@ void DocumentWindow::restore_state(QSettings &state)
 			QFileInfo file(path);
 
 			if(file.exists())
-				paths.append(path);
+				add_document_by_path(path);
 		}
 
 		state.endArray();
-
-		set_documents_by_paths(paths);
 	}
-
 
 	int32_t start_value = state.value("start", m_start_edit->get_value()).toInt();
 	int32_t end_value = state.value("end", m_end_edit->get_value()).toInt();
@@ -769,15 +747,11 @@ void DocumentWindow::open_file()
 			try
 			{
 				TelemetryDocument *document = qApp->load_file(path);
-
-				if(m_loaded_documents.empty())
-					set_document(document);
-				else
-					add_document(document);
+				add_document(document);
 			}
 			catch(...)
 			{
-				set_document(nullptr);
+				clear();
 				statusBar()->showMessage("Failed to load telemetry file!");
 			}
 		}
@@ -840,7 +814,7 @@ void DocumentWindow::run_fps_test()
 			QFileInfo info(full_result_path);
 
 			if(info.isFile())
-				set_document_by_path(full_result_path, runner.get_name());
+				add_document_by_path(full_result_path, runner.get_name());
 		}
 	}
 }

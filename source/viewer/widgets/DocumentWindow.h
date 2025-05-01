@@ -15,14 +15,11 @@ class DocumentWindow final : public QMainWindow, public Ui::DocumentWindow
 {
 Q_OBJECT
 public:
-	DocumentWindow();
+	DocumentWindow(TelemetryDocument *document = nullptr);
 	~DocumentWindow() override;
 
-	void set_document(TelemetryDocument *document);
-	void set_document_by_path(const QString &path, const QString &name = "");
-	void set_documents_by_paths(const QStringList &paths);
-
 	void add_document(TelemetryDocument *document);
+	void add_document_by_path(const QString &path, const QString &name = "");
 
 	void restore_state(QSettings &state);
 	void save_state(QSettings &state) const;
