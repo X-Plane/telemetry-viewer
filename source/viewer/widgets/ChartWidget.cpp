@@ -418,6 +418,11 @@ void ChartWidget::clear()
 	m_line_chart->removeAllSeries();
 	m_boxplot_chart->removeAllSeries();
 
+	for(auto &event : m_events)
+		delete event;
+
+	m_events.clear();
+
 	m_data.clear();
 }
 
