@@ -205,7 +205,7 @@ void ChartWidget::update_tooltip(const QPointF &point) const
 		{
 			try
 			{
-				telemetry_data_point data_point = data.field->get_data_point_closest_to_time(chart_point.x());
+				telemetry_data_point data_point = data.field->get_data_point_closest_to_time(chart_point.x() + data.time_offset);
 				data_points.append(qMakePair(data.field, data_point));
 			}
 			catch(...)
@@ -236,7 +236,7 @@ void ChartWidget::set_range(int32_t start, int32_t end)
 
 	for(auto &data : m_data)
 	{
-		auto [ min_value, max_value ] = data.field->get_extreme_data_point_in_range(m_start, m_end);
+		auto [ min_value, max_value ] = data.field->get_extreme_data_point_in_range(m_start + data.time_offset, m_end + data.time_offset);
 
 		data.min_value = min_value;
 		data.max_value = max_value;
@@ -322,7 +322,7 @@ void ChartWidget::add_data(const telemetry_field *field, QColor color, int32_t t
 	if(field->get_type() == telemetry_type::string)
 		return;
 
-	auto [ min_value, max_value ] = field->get_extreme_data_point_in_range(m_start, m_end);
+	auto [ min_value, max_value ] = field->get_extreme_data_point_in_range(m_start + time_offset, m_end + time_offset);
 
 	data.axis = get_chart_axis_for_field(field);
 	data.min_value = min_value;
