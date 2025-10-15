@@ -261,6 +261,8 @@ void DocumentWindow::clear()
 	m_overview_view->clear();
 	m_timeline_tree->clear();
 
+	m_enabled_fields.clear();
+
 	m_documents_tree->clear();
 
 	for(auto &container : m_loaded_documents)
