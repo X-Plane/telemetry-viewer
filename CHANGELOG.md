@@ -1,3 +1,9 @@
+# v0.6.0
+This release brings with it the ability to open multiple traces and overlay them on top of each other to better compare performance tests
+
+ - Dragging multiple files into the window will open all traces at once
+ - Holding ctrl while dragging one or more files into the window will open the files on top of the additional files
+
 # v0.5.0
 This release is the first step towards getting this project put into proper shape to be used in the field
 

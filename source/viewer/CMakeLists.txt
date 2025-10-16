@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.20)
 project(Telemetry-Viewer)
 
 set(VIEWER_VERSION_MAJOR 0)
-set(VIEWER_VERSION_MINOR 5)
+set(VIEWER_VERSION_MINOR 6)
 set(VIEWER_VERSION_PATCH 0)
 
 set(CMAKE_AUTORCC ON)

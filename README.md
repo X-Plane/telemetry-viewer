@@ -5,6 +5,8 @@ Telemetry Viewer is a Qt 6 based application that can be used to inspect [X-Plan
 ## Performance testing
 One of the main use cases for Telemetry Viewer is performance testing. To make this as easy as possible, Telemetry Viewer has a built-in FPS test utility that can launch X-Plane with various configurations while also providing stable seeds to the various random number generators to make A/B testing possible. Note that FPS testing is not easily possible with the Steam version due to the way Steam handles launching of applications and passing of command line arguments.
 
+It's possible to compare multiple traces against each other. In those cases Telemetry Viewer will try to correct timestamp offsets within event groups to correctly overlay them. Opening multiple telemetry files can be done by either selecting multiple files in the file dialogue, dragging and dropping multiple files into the window or holding ctrl while dragging one or more additional files into the window.
+
 ## Telemetry files
 X-Plane telemetry files include data from various providers within the sim. Each data point is associated with a timestamp making plotting of the data easy. Despite what their name suggests, telemetry files are only stored locally and rotated between X-Plane runs.
 
