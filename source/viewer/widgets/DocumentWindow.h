@@ -77,11 +77,8 @@ private:
 
 	void set_time_range(int32_t start, int32_t end);
 
-	void update_selected_document(TelemetryDocument *document);
+	void update_selected_document(const loaded_document *document);
 	void update_statistics_view();
-
-	loaded_document *get_selected_document();
-	const loaded_document *get_selected_document() const;
 
 	QAction *add_toolbar_widget(QWidget *widget, const QString &text) const;
 	QAction *add_toolbar_spacer() const;

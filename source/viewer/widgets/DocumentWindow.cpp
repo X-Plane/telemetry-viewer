@@ -125,15 +125,23 @@ void DocumentWindow::clear_recent_items()
 void DocumentWindow::provider_item_changed(QTreeWidgetItem *item)
 {
 	telemetry_field_lookup lookup = item->data(0, Qt::UserRole).value<telemetry_field_lookup>();
-	set_field_enabled(lookup, item->checkState(0) == Qt::Checked);
+	const auto iterator = std::find(m_enabled_fields.begin(), m_enabled_fields.end(), lookup);
+
+	const bool was_enabled = iterator != m_enabled_fields.end();
+	const bool enabled = item->checkState(0) == Qt::Checked;
+
+	if(was_enabled == enabled)
+		return;
+
+	set_field_enabled(lookup, enabled);
 }
 
 void DocumentWindow::document_selection_changed(QTreeWidgetItem *item)
 {
 	loaded_document *document = item->data(0, Qt::UserRole).value<loaded_document *>();
-	Q_ASSERT(document && document->document);
+	Q_ASSERT(document);
 
-	update_selected_document(document->document);
+	update_selected_document(document);
 }
 
 void DocumentWindow::document_item_changed(QTreeWidgetItem *item)
@@ -509,7 +517,7 @@ void DocumentWindow::add_document(TelemetryDocument *document)
 				item->setCheckState(0, Qt::CheckState::Checked);
 		}
 
-		update_selected_document(document);
+		update_selected_document(entry);
 
 		{
 			auto create_span = [](const telemetry_event &event) -> QTreeWidgetItem * {
@@ -562,14 +570,6 @@ void DocumentWindow::add_document(TelemetryDocument *document)
 	}
 }
 
-DocumentWindow::loaded_document *DocumentWindow::get_selected_document()
-{
-	return m_loaded_documents.front();
-}
-const DocumentWindow::loaded_document *DocumentWindow::get_selected_document() const
-{
-	return m_loaded_documents.front();
-}
 
 void DocumentWindow::restore_state(QSettings &state)
 {
@@ -635,11 +635,11 @@ void DocumentWindow::save_state(QSettings &state) const
 	update_statistics_view();
 }
 
-void DocumentWindow::update_selected_document(TelemetryDocument *document)
+void DocumentWindow::update_selected_document(const loaded_document *document)
 {
 	m_overview_view->clear();
 
-	const auto &container = document->get_data();
+	const auto &container = document->document->get_data();
 
 	// Statistics view
 	{
@@ -693,6 +693,26 @@ void DocumentWindow::update_selected_document(TelemetryDocument *document)
 
 		for(auto &item : items)
 			item->setExpanded(true);
+	}
+
+	for(int i = 0; i < m_providers_view->topLevelItemCount(); ++ i)
+	{
+		QTreeWidgetItem *item = m_providers_view->topLevelItem(i);
+
+		for(int j = 0; j < item->childCount(); ++ j)
+		{
+			QTreeWidgetItem *child = item->child(j);
+			telemetry_field_lookup lookup = child->data(0, Qt::UserRole).value<telemetry_field_lookup>();
+
+			const telemetry_field *field = lookup_field(lookup, document->document);
+			if(!field)
+			{
+				child->setBackground(0, Qt::NoBrush);
+				continue;
+			}
+
+			child->setBackground(0, get_color_for_telemetry_field(field, document));
+		}
 	}
 }
 
@@ -815,6 +835,10 @@ void DocumentWindow::update_statistics_view()
 			}
 		}
 	}
+
+	std::reverse(fps_sets.begin(), fps_sets.end());
+	std::reverse(time_sets.begin(), time_sets.end());
+	std::reverse(value_sets.begin(), value_sets.end());
 
 	auto build_bar_series = [&](const QList<QBarSet *> &sets, int precision, const QString &series_label, const QString &unit_label) {
 
@@ -962,7 +986,7 @@ void DocumentWindow::event_range_changed(int index)
 	if(index == -1)
 		return;
 
-	auto &regions = get_selected_document()->document->get_regions();
+	auto &regions = m_loaded_documents[0]->document->get_regions();
 
 	set_time_range(regions[index].start, regions[index].end);
 
