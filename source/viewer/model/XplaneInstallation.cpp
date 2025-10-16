@@ -17,8 +17,6 @@ XplaneInstallation::XplaneInstallation(const QString &path) :
 	m_path = info.absoluteFilePath();
 	m_telemetry_path = m_path + "/Output/diagnostic reports";
 	m_replay_path = m_path + "/Output/replays";
-
-	qDebug() << m_path << m_telemetry_path << m_replay_path;
 }
 
 QVector<QString> XplaneInstallation::get_executables() const
