@@ -138,6 +138,9 @@ void DocumentWindow::provider_item_changed(QTreeWidgetItem *item)
 
 void DocumentWindow::document_selection_changed(QTreeWidgetItem *item)
 {
+	if(!item)
+		return;
+
 	loaded_document *document = item->data(0, Qt::UserRole).value<loaded_document *>();
 	Q_ASSERT(document);
 
