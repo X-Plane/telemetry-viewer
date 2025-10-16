@@ -60,6 +60,7 @@ private:
 	void set_field_enabled(const telemetry_field *field, bool enable);
 
 	void set_time_range(int32_t start, int32_t end);
+	void update_statistics_view();
 
 	loaded_document &get_selected_document();
 	const loaded_document &get_selected_document() const;

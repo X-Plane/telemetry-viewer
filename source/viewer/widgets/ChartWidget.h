@@ -51,6 +51,9 @@ public:
 
 	void set_range(int32_t start, int32_t end);
 
+	int32_t get_start() const { return m_start; }
+	int32_t get_end() const { return m_end; }
+
 protected:
 	void mouseMoveEvent(QMouseEvent *event) override;
 	void leaveEvent(QEvent *event) override;

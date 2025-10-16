@@ -178,6 +178,8 @@ void DocumentWindow::set_field_enabled(const telemetry_field *field, bool enable
 
 		m_enabled_fields.erase(iterator);
 	}
+
+	update_statistics_view();
 }
 
 bool DocumentWindow::can_accept_mime_data(const QMimeData *mime) const
@@ -566,6 +568,8 @@ void DocumentWindow::add_document(TelemetryDocument *document)
 
 			m_chart_view->add_data(&additional_field, color, entry.start_offset);
 		}
+
+		update_statistics_view();
 	}
 }
 
@@ -639,87 +643,157 @@ void DocumentWindow::save_state(QSettings &state) const
  void DocumentWindow::set_time_range(int32_t start, int32_t end)
 {
 	m_chart_view->set_range(start, end);
+	update_statistics_view();
+}
 
+void DocumentWindow::update_statistics_view()
+{
 	QChart *chart = new QChart();
 
-	if(!m_loaded_documents.empty())
+	struct perf_set
 	{
-		struct perf_set
+		QString name;
+		float percentile;
+	};
+
+	const std::array perf_series = {
+		perf_set{ "P1", 0.01f },
+		perf_set{ "P5", 0.05f },
+		perf_set{ "Average", -1.0f },
+		perf_set{ "P95", 0.95f },
+		perf_set{ "P99", 0.99f }
+	};
+
+	auto build_bar_set = [&](const telemetry_field &field) -> QBarSet * {
+
+		try
 		{
-			QString name;
-			float percentile;
-		};
+			PerformanceCalculator perf(field, m_chart_view->get_start(), m_chart_view->get_end());
 
-		const std::array perf_series = {
-			perf_set{ "P1", 0.01f },
-			perf_set{ "P5", 0.05f },
-			perf_set{ "Average", -1.0f },
-			perf_set{ "P95", 0.95f },
-			perf_set{ "P99", 0.99f }
-		};
+			QBarSet *set = new QBarSet(QString::fromStdString(field.get_title()));
+			set->setColor(get_color_for_telemetry_field(&field));
 
-		auto build_bar_set = [&](provider_timing::field_id field_id) -> QBarSet * {
-
-			try
+			switch(field.get_unit())
 			{
-				auto &field = provider_timing::get_field(m_loaded_documents.at(0).document->get_data(), field_id);
-				PerformanceCalculator perf(field, start, end);
-
-				QBarSet *set = new QBarSet(QString::fromStdString(field.get_title()));
-				set->setColor(get_color_for_telemetry_field(&field));
-
-				for(auto &perf_set : perf_series)
+				case telemetry_unit::time:
 				{
-					if(perf_set.percentile <= 0.0f)
-						set->append(perf.calculate_average() * 1000.0);
-					else
-						set->append(perf.calculate_percentile(perf_set.percentile) * 1000.0);
+					for(auto &perf_set : perf_series)
+					{
+						if(perf_set.percentile <= 0.0f)
+							set->append(perf.calculate_average() * 1000.0);
+						else
+							set->append(perf.calculate_percentile(perf_set.percentile) * 1000.0);
+					}
+
+					break;
 				}
 
-				return set;
+				case telemetry_unit::fps:
+				case telemetry_unit::value:
+				{
+					for(auto &perf_set : perf_series)
+					{
+						if(perf_set.percentile <= 0.0f)
+							set->append(perf.calculate_average());
+						else
+							set->append(perf.calculate_percentile(perf_set.percentile));
+					}
+
+					break;
+				}
+
+				default:
+				{
+					delete set;
+					return nullptr;
+				}
 			}
-			catch(...)
-			{
-				return nullptr;
-			}
-		};
-
-		QList<QBarSet *> bar_sets;
-
-		if(QBarSet *cpu = build_bar_set(provider_timing::cpu))
-			bar_sets.append(cpu);
-		if(QBarSet *gpu = build_bar_set(provider_timing::gpu))
-			bar_sets.append(gpu);
 
 
-		if(!bar_sets.isEmpty())
+			return set;
+		}
+		catch(...)
 		{
-			QHorizontalBarSeries *series = new QHorizontalBarSeries();
-			series->append(bar_sets);
-			series->setLabelsVisible(true);
-			series->setLabelsPosition(QAbstractBarSeries::LabelsInsideEnd);
-			series->setLabelsPrecision(3);
-			series->setLabelsFormat("@valuems");
+			return nullptr;
+		}
+	};
 
-			chart->addSeries(series);
+	QList<QBarSet *> fps_sets;
+	QList<QBarSet *> time_sets;
+	QList<QBarSet *> value_sets;
 
-			auto y_axis = new QBarCategoryAxis();
+	for(auto &document : m_loaded_documents)
+	{
+		for(auto &field : m_enabled_fields)
+		{
+			const telemetry_unit unit = field->get_unit();
 
-			for(auto &perf_set : perf_series)
-				y_axis->append(perf_set.name);
+			if(unit != telemetry_unit::time && unit != telemetry_unit::fps && unit != telemetry_unit::value)
+				continue;
 
-			chart->addAxis(y_axis, Qt::AlignLeft);
-			series->attachAxis(y_axis);
+			const auto &data = document.document->get_data();
+			if(!data.has_provider(field->get_provider_id()))
+				continue;
 
-			auto x_axis = new QValueAxis();
-			x_axis->setLabelFormat("%ims");
+			const auto &provider = data.get_provider(field->get_provider_id());
+			if(!provider.has_field(field->get_id()))
+				continue;
 
-			chart->addAxis(x_axis, Qt::AlignBottom);
+			const telemetry_field &additional_field = provider.get_field(field->get_id());
 
-			series->attachAxis(x_axis);
-			x_axis->applyNiceNumbers();
+			if(QBarSet *set = build_bar_set(additional_field))
+			{
+				switch(unit)
+				{
+					case telemetry_unit::time:
+						time_sets.append(set);
+						break;
+					case telemetry_unit::value:
+						value_sets.append(set);
+						break;
+					case telemetry_unit::fps:
+						fps_sets.append(set);
+						break;
+				}
+			}
 		}
 	}
+
+	auto build_bar_series = [&](const QList<QBarSet *> &sets, int precision, const QString &series_label, const QString &unit_label) {
+
+		if(sets.isEmpty())
+			return;
+
+		QHorizontalBarSeries *series = new QHorizontalBarSeries();
+		series->append(sets);
+		series->setLabelsVisible(true);
+		series->setLabelsPosition(QAbstractBarSeries::LabelsInsideEnd);
+		series->setLabelsPrecision(precision);
+		series->setLabelsFormat(series_label);
+
+		chart->addSeries(series);
+
+		auto y_axis = new QBarCategoryAxis();
+
+		for(auto &perf_set : perf_series)
+			y_axis->append(perf_set.name);
+
+		chart->addAxis(y_axis, Qt::AlignLeft);
+		series->attachAxis(y_axis);
+
+		auto x_axis = new QValueAxis();
+		x_axis->setLabelFormat(unit_label);
+
+		chart->addAxis(x_axis, Qt::AlignBottom);
+
+		series->attachAxis(x_axis);
+		x_axis->applyNiceNumbers();
+
+	};
+
+	build_bar_series(time_sets, 3, "@valuems", "%ims");
+	build_bar_series(fps_sets, 1, "@valueFPS", "%iFPS");
+	build_bar_series(value_sets, 1, "@value", "%i");
 
 	m_statistics_view->setChart(chart);
 }
