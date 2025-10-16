@@ -49,29 +49,47 @@ private Q_SLOTS:
 
 	[[maybe_unused]] void provider_item_changed(QTreeWidgetItem *item);
 
+	[[maybe_unused]] void document_selection_changed(QTreeWidgetItem *item);
+	[[maybe_unused]] void document_item_changed(QTreeWidgetItem *item);
+
 private:
 	struct loaded_document
 	{
 		TelemetryDocument *document;
 		double start_offset;
+		bool enabled = true;
+		QString seed;
+	};
+
+	struct telemetry_field_lookup
+	{
+		std::string identifier;
+		uint8_t field_id;
+
+		auto operator<=>(const telemetry_field_lookup &) const = default;
 	};
 
 	void clear();
-	void set_field_enabled(const telemetry_field *field, bool enable);
+	void set_field_enabled(const telemetry_field_lookup &lookup, bool enable);
+	const telemetry_field *lookup_field(const telemetry_field_lookup &lookup, TelemetryDocument *document) const;
+
+	QColor get_color_for_telemetry_field(const telemetry_field *field, const loaded_document *document) const;
 
 	void set_time_range(int32_t start, int32_t end);
+
+	void update_selected_document(TelemetryDocument *document);
 	void update_statistics_view();
 
-	loaded_document &get_selected_document();
-	const loaded_document &get_selected_document() const;
+	loaded_document *get_selected_document();
+	const loaded_document *get_selected_document() const;
 
 	QAction *add_toolbar_widget(QWidget *widget, const QString &text) const;
 	QAction *add_toolbar_spacer() const;
 
 	QString m_base_dir;
 
-	QVector<loaded_document> m_loaded_documents;
-	QVector<const telemetry_field *> m_enabled_fields;
+	QVector<loaded_document *> m_loaded_documents;
+	QVector<telemetry_field_lookup> m_enabled_fields;
 
 	std::vector<std::unique_ptr<QAction>> m_recent_file_actions;
 

@@ -19,13 +19,13 @@ void ChartWidget::chart_data::detach() const
 }
 void ChartWidget::chart_data::hide()
 {
-	if(!is_hidden)
+	if(is_hidden)
 		return;
 
 	line_series->hide();
 	box_series->hide();
 
-	is_hidden = false;
+	is_hidden = true;
 }
 void ChartWidget::chart_data::show()
 {

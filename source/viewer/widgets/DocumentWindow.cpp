@@ -15,12 +15,6 @@
 #include "utilities/Settings.h"
 #include "utilities/PerformanceCalculator.h"
 
-static QColor get_color_for_telemetry_field(const telemetry_field *field)
-{
-	return generate_color(QString::fromStdString(field->get_title()), 0.9f, 0.4f);
-}
-
-
 DocumentWindow::DocumentWindow(TelemetryDocument *document)
 {
 	setupUi(this);
@@ -91,7 +85,10 @@ DocumentWindow::DocumentWindow(TelemetryDocument *document)
 DocumentWindow::~DocumentWindow()
 {
 	for(auto &document : m_loaded_documents)
-		delete document.document;
+	{
+		delete document->document;
+		delete document;
+	}
 }
 
 void DocumentWindow::closeEvent(QCloseEvent *event)
@@ -127,53 +124,91 @@ void DocumentWindow::clear_recent_items()
 
 void DocumentWindow::provider_item_changed(QTreeWidgetItem *item)
 {
-	const telemetry_field *field = item->data(0, Qt::UserRole).value<const telemetry_field *>();
-	Q_ASSERT(field);
-
-	set_field_enabled(field, item->checkState(0) == Qt::Checked);
+	telemetry_field_lookup lookup = item->data(0, Qt::UserRole).value<telemetry_field_lookup>();
+	set_field_enabled(lookup, item->checkState(0) == Qt::Checked);
 }
 
-void DocumentWindow::set_field_enabled(const telemetry_field *field, bool enable)
+void DocumentWindow::document_selection_changed(QTreeWidgetItem *item)
 {
-	QVector<QPair<const telemetry_field *, int32_t>> fields;
+	loaded_document *document = item->data(0, Qt::UserRole).value<loaded_document *>();
+	Q_ASSERT(document && document->document);
+
+	update_selected_document(document->document);
+}
+
+void DocumentWindow::document_item_changed(QTreeWidgetItem *item)
+{
+	loaded_document *document = item->data(0, Qt::UserRole).value<loaded_document *>();
+	Q_ASSERT(document);
+
+	document->enabled = (item->checkState(0) == Qt::Checked);
+	update_statistics_view();
+
+	for(auto &lookup : m_enabled_fields)
+	{
+		const telemetry_field *field = lookup_field(lookup, document->document);
+		if(!field)
+			continue;
+
+		if(document->enabled)
+			m_chart_view->show_data(field);
+		else
+			m_chart_view->hide_data(field);
+	}
+}
+
+QColor DocumentWindow::get_color_for_telemetry_field(const telemetry_field *field, const loaded_document *document) const
+{
+	if(document->seed.length() == 0)
+		return generate_color(QString::fromStdString(field->get_title()), 0.9f, 0.4f);
+
+	return generate_color(QString::fromStdString(field->get_title()) + document->seed, 0.9f, 0.4f);
+}
+
+const telemetry_field *DocumentWindow::lookup_field(const telemetry_field_lookup &lookup, TelemetryDocument *document) const
+{
+	const auto &data = document->get_data();
+	if(!data.has_provider(lookup.identifier))
+		return nullptr;
+
+	const auto &provider = data.get_provider(lookup.identifier);
+	if(!provider.has_field(lookup.field_id))
+		return nullptr;
+
+	const telemetry_field &field = provider.get_field(lookup.field_id);
+	return &field;
+}
+
+void DocumentWindow::set_field_enabled(const telemetry_field_lookup &lookup, bool enable)
+{
+	QVector<QPair<const telemetry_field *, loaded_document *>> fields;
 
 	for(auto &container : m_loaded_documents)
 	{
-		const auto &data = container.document->get_data();
-		if(!data.has_provider(field->get_provider_id()))
-			continue;
-
-		const auto &provider = data.get_provider(field->get_provider_id());
-		if(!provider.has_field(field->get_id()))
-			continue;
-
-		const telemetry_field &additional_field = provider.get_field(field->get_id());
-		fields.push_back(qMakePair(&additional_field, container.start_offset));
+		const telemetry_field *field = lookup_field(lookup, container->document);
+		if(field)
+			fields.push_back(qMakePair(field, container));
 	}
 
 	if(enable)
 	{
-		const QColor primary_color = get_color_for_telemetry_field(field);
+		for(auto &[ field, document ] : fields)
+		{
+			QColor primary_color = get_color_for_telemetry_field(field, document);
+			m_chart_view->add_data(field, primary_color, document->start_offset);
 
-		QColor secondary_color = primary_color;
-		secondary_color.setAlpha(128);
+			if(!document->enabled)
+				m_chart_view->hide_data(field);
+		}
 
-
-		m_chart_view->add_data(field, primary_color, 0);
-
-		for(auto &[ additional, offset ] : fields)
-			m_chart_view->add_data(additional, secondary_color, offset);
-
-		m_enabled_fields.push_back(field);
+		m_enabled_fields.push_back(lookup);
 	}
 	else
 	{
-		m_chart_view->remove_data(field);
+		for(auto &[ field, offset ] : fields)
+			m_chart_view->remove_data(field);
 
-		for(auto &additional : fields)
-			m_chart_view->remove_data(additional.first);
-
-		const auto iterator = std::find(m_enabled_fields.begin(), m_enabled_fields.end(), field);
+		const auto iterator = std::find(m_enabled_fields.begin(), m_enabled_fields.end(), lookup);
 		Q_ASSERT(iterator != m_enabled_fields.end());
 
 		m_enabled_fields.erase(iterator);
@@ -268,7 +303,10 @@ void DocumentWindow::clear()
 	m_documents_tree->clear();
 
 	for(auto &container : m_loaded_documents)
-		delete container.document;
+	{
+		delete container->document;
+		delete container;
+	}
 
 	m_loaded_documents.clear();
 }
@@ -319,13 +357,16 @@ void DocumentWindow::add_document(TelemetryDocument *document)
 {
 	const bool is_first_document = m_loaded_documents.isEmpty();
 
-	loaded_document entry;
-	entry.document = document;
-	entry.start_offset = 0.0;
+	loaded_document *entry = new loaded_document;
+	entry->document = document;
+	entry->start_offset = 0.0;
+
+	if(!is_first_document)
+		entry->seed = document->get_name();
 
 	if(!is_first_document)
 	{
-		TelemetryDocument *root_document = m_loaded_documents.front().document;
+		TelemetryDocument *root_document = m_loaded_documents.front()->document;
 		auto &root_regions = root_document->get_regions();
 		auto &regions = document->get_regions();
 
@@ -338,8 +379,8 @@ void DocumentWindow::add_document(TelemetryDocument *document)
 			if(root_regions[i].type != regions[i].type || root_regions[i].name != regions[i].name)
 				throw std::range_error("Telemetry document has different timing regions");
 
-			if(entry.start_offset <= 0.0 && regions[i].type == TelemetryRegion::Type::Flying)
-				entry.start_offset = root_regions[i].start - regions[i].start;
+			if(entry->start_offset <= 0.0 && regions[i].type == TelemetryRegion::Type::Flying)
+				entry->start_offset = root_regions[i].start - regions[i].start;
 		}
 	}
 
@@ -347,7 +388,9 @@ void DocumentWindow::add_document(TelemetryDocument *document)
 
 	{
 		QTreeWidgetItem *item = new QTreeWidgetItem();
+		item->setCheckState(0, Qt::Checked);
 		item->setText(0, document->get_name());
+		item->setData(0, Qt::UserRole, QVariant::fromValue(entry));
 
 		m_documents_tree->addTopLevelItem(item);
 
@@ -394,60 +437,6 @@ void DocumentWindow::add_document(TelemetryDocument *document)
 		m_event_picker->setCurrentIndex(selected_region);
 		event_range_changed(selected_region);
 
-		// Statistics view
-		{
-			QList<QTreeWidgetItem *> items;
-
-			for(auto &stat : container.get_statistics())
-			{
-				QTreeWidgetItem *root_item = new QTreeWidgetItem();
-				root_item->setText(0, QString::fromStdString(stat.get_title()));
-
-				for(auto &entry : stat.get_entries())
-				{
-					QTreeWidgetItem *stat_item = new QTreeWidgetItem(root_item);
-					stat_item->setText(0, QString::fromStdString(entry.title));
-
-					switch(entry.value.type)
-					{
-						case telemetry_type::uint8:
-						case telemetry_type::uint16:
-						case telemetry_type::uint32:
-						case telemetry_type::uint64:
-							stat_item->setText(1, QString::number(entry.value.get<uint64_t>()));
-							break;
-
-						case telemetry_type::int32:
-						case telemetry_type::int64:
-							stat_item->setText(1, QString::number(entry.value.get<int64_t>()));
-							break;
-
-						case telemetry_type::f32:
-						case telemetry_type::f64:
-							stat_item->setText(1, QString::number(entry.value.get<double>()));
-							break;
-
-						case telemetry_type::string:
-							stat_item->setText(1, QString::fromStdString(entry.value.string));
-							stat_item->setToolTip(1, QString::fromStdString(entry.value.string));
-							break;
-
-						default:
-							stat_item->setText(1, "Unsupported type");
-					}
-
-
-				}
-
-				items.push_back(root_item);
-			}
-
-			m_overview_view->addTopLevelItems(items);
-
-			for(auto &item : items)
-				item->setExpanded(true);
-		}
-
 		// Add all the telemetry providers
 		{
 			QList<QTreeWidgetItem *> top_level_items;
@@ -474,10 +463,14 @@ void DocumentWindow::add_document(TelemetryDocument *document)
 						if(field.empty() || !can_chart)
 							continue;
 
+						telemetry_field_lookup lookup;
+						lookup.identifier = provider.get_identifier();
+						lookup.field_id = field.get_id();
+
 						QTreeWidgetItem *item = new QTreeWidgetItem(provider_item);
 						item->setCheckState(0, Qt::CheckState::Unchecked);
-						item->setData(0, Qt::UserRole, QVariant::fromValue(&field));
-						item->setBackground(0, get_color_for_telemetry_field(&field));
+						item->setData(0, Qt::UserRole, QVariant::fromValue(lookup));
+						item->setBackground(0, get_color_for_telemetry_field(&field, entry));
 						item->setText(1, QString::fromStdString(field.get_title()));
 
 						switch(field.get_unit())
@@ -516,6 +509,8 @@ void DocumentWindow::add_document(TelemetryDocument *document)
 				item->setCheckState(0, Qt::CheckState::Checked);
 		}
 
+		update_selected_document(document);
+
 		{
 			auto create_span = [](const telemetry_event &event) -> QTreeWidgetItem * {
 				auto create_child_span = [](QTreeWidgetItem *root, const telemetry_event &event, auto &r) -> QTreeWidgetItem *
@@ -551,33 +546,27 @@ void DocumentWindow::add_document(TelemetryDocument *document)
 	}
 	else
 	{
-		for(auto &field : m_enabled_fields)
+		for(auto &lookup : m_enabled_fields)
 		{
-			const auto &data = entry.document->get_data();
-			if(!data.has_provider(field->get_provider_id()))
-				continue;
+			const telemetry_field *field = lookup_field(lookup, document);
+			if(field)
+			{
+				QColor color = get_color_for_telemetry_field(field, entry);
+				color.setAlpha(128);
 
-			const auto &provider = data.get_provider(field->get_provider_id());
-			if(!provider.has_field(field->get_id()))
-				continue;
-
-			const telemetry_field &additional_field = provider.get_field(field->get_id());
-
-			QColor color = get_color_for_telemetry_field(field);
-			color.setAlpha(128);
-
-			m_chart_view->add_data(&additional_field, color, entry.start_offset);
+				m_chart_view->add_data(field, color, entry->start_offset);
+			}
 		}
 
 		update_statistics_view();
 	}
 }
 
-DocumentWindow::loaded_document &DocumentWindow::get_selected_document()
+DocumentWindow::loaded_document *DocumentWindow::get_selected_document()
 {
 	return m_loaded_documents.front();
 }
-const DocumentWindow::loaded_document &DocumentWindow::get_selected_document() const
+const DocumentWindow::loaded_document *DocumentWindow::get_selected_document() const
 {
 	return m_loaded_documents.front();
 }
@@ -625,12 +614,12 @@ void DocumentWindow::save_state(QSettings &state) const
 
 	for(auto &document : m_loaded_documents)
 	{
-		TelemetryDocument *doc = document.document;
+		TelemetryDocument *doc = document->document;
 		if(doc->get_path().isEmpty())
 			continue;
 
 		state.setArrayIndex(index ++);
-		state.setValue("path", document.document->get_path());
+		state.setValue("path", document->document->get_path());
 	}
 
 	state.endArray();
@@ -644,6 +633,67 @@ void DocumentWindow::save_state(QSettings &state) const
 {
 	m_chart_view->set_range(start, end);
 	update_statistics_view();
+}
+
+void DocumentWindow::update_selected_document(TelemetryDocument *document)
+{
+	m_overview_view->clear();
+
+	const auto &container = document->get_data();
+
+	// Statistics view
+	{
+		QList<QTreeWidgetItem *> items;
+
+		for(auto &stat : container.get_statistics())
+		{
+			QTreeWidgetItem *root_item = new QTreeWidgetItem();
+			root_item->setText(0, QString::fromStdString(stat.get_title()));
+
+			for(auto &entry : stat.get_entries())
+			{
+				QTreeWidgetItem *stat_item = new QTreeWidgetItem(root_item);
+				stat_item->setText(0, QString::fromStdString(entry.title));
+
+				switch(entry.value.type)
+				{
+					case telemetry_type::uint8:
+					case telemetry_type::uint16:
+					case telemetry_type::uint32:
+					case telemetry_type::uint64:
+						stat_item->setText(1, QString::number(entry.value.get<uint64_t>()));
+						break;
+
+					case telemetry_type::int32:
+					case telemetry_type::int64:
+						stat_item->setText(1, QString::number(entry.value.get<int64_t>()));
+						break;
+
+					case telemetry_type::f32:
+					case telemetry_type::f64:
+						stat_item->setText(1, QString::number(entry.value.get<double>()));
+						break;
+
+					case telemetry_type::string:
+						stat_item->setText(1, QString::fromStdString(entry.value.string));
+						stat_item->setToolTip(1, QString::fromStdString(entry.value.string));
+						break;
+
+					default:
+						stat_item->setText(1, "Unsupported type");
+				}
+
+
+			}
+
+			items.push_back(root_item);
+		}
+
+		m_overview_view->addTopLevelItems(items);
+
+		for(auto &item : items)
+			item->setExpanded(true);
+	}
 }
 
 void DocumentWindow::update_statistics_view()
@@ -664,14 +714,14 @@ void DocumentWindow::update_statistics_view()
 		perf_set{ "P99", 0.99f }
 	};
 
-	auto build_bar_set = [&](const telemetry_field &field) -> QBarSet * {
+	auto build_bar_set = [&](const telemetry_field &field, loaded_document *document) -> QBarSet * {
 
 		try
 		{
 			PerformanceCalculator perf(field, m_chart_view->get_start(), m_chart_view->get_end());
 
 			QBarSet *set = new QBarSet(QString::fromStdString(field.get_title()));
-			set->setColor(get_color_for_telemetry_field(&field));
+			set->setColor(get_color_for_telemetry_field(&field, document));
 
 			switch(field.get_unit())
 			{
@@ -724,14 +774,21 @@ void DocumentWindow::update_statistics_view()
 
 	for(auto &document : m_loaded_documents)
 	{
-		for(auto &field : m_enabled_fields)
+		if(!document->enabled)
+			continue;
+
+		for(auto &lookup : m_enabled_fields)
 		{
+			const telemetry_field *field = lookup_field(lookup, document->document);
+			if(!field)
+				continue;
+
 			const telemetry_unit unit = field->get_unit();
 
 			if(unit != telemetry_unit::time && unit != telemetry_unit::fps && unit != telemetry_unit::value)
 				continue;
 
-			const auto &data = document.document->get_data();
+			const auto &data = document->document->get_data();
 			if(!data.has_provider(field->get_provider_id()))
 				continue;
 
@@ -741,7 +798,7 @@ void DocumentWindow::update_statistics_view()
 
 			const telemetry_field &additional_field = provider.get_field(field->get_id());
 
-			if(QBarSet *set = build_bar_set(additional_field))
+			if(QBarSet *set = build_bar_set(additional_field, document))
 			{
 				switch(unit)
 				{
@@ -838,7 +895,7 @@ void DocumentWindow::save_file()
 {
 	for(auto &document : m_loaded_documents)
 	{
-		if(!document.document->has_data())
+		if(!document->document->has_data())
 			continue;
 
 		QString base_path = m_base_dir;
@@ -846,12 +903,12 @@ void DocumentWindow::save_file()
 		if(!m_installations.empty() && base_path.isEmpty())
 			base_path = m_installations[m_installation_selector->currentIndex()].get_telemetry_path();
 
-		base_path = base_path % '/' % document.document->get_name();
+		base_path = base_path % '/' % document->document->get_name();
 
 		QString path = QFileDialog::getSaveFileName(this, tr("Save Telemetry file"), base_path, tr("Telemetry File (*.tlm)"));
 
 		if(!path.isEmpty())
-			document.document->save(path);
+			document->document->save(path);
 	}
 }
 
@@ -905,7 +962,7 @@ void DocumentWindow::event_range_changed(int index)
 	if(index == -1)
 		return;
 
-	auto &regions = get_selected_document().document->get_regions();
+	auto &regions = get_selected_document()->document->get_regions();
 
 	set_time_range(regions[index].start, regions[index].end);
 

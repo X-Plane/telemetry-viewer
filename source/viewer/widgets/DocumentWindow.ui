@@ -72,9 +72,15 @@
         </property>
         <item>
          <widget class="QTreeWidget" name="m_documents_tree">
+          <property name="alternatingRowColors">
+           <bool>true</bool>
+          </property>
+          <property name="selectionMode">
+           <enum>QAbstractItemView::SelectionMode::SingleSelection</enum>
+          </property>
           <column>
            <property name="text">
-            <string>Files</string>
+            <string>Trace</string>
            </property>
           </column>
          </widget>
@@ -612,8 +618,8 @@
    <slot>range_changed()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>1110</x>
-     <y>1059</y>
+     <x>777</x>
+     <y>1060</y>
     </hint>
     <hint type="destinationlabel">
      <x>901</x>
@@ -628,8 +634,8 @@
    <slot>range_changed()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>1265</x>
-     <y>1059</y>
+     <x>918</x>
+     <y>1060</y>
     </hint>
     <hint type="destinationlabel">
      <x>901</x>
@@ -644,7 +650,7 @@
    <slot>event_range_changed(int)</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>177</x>
+     <x>555</x>
      <y>1060</y>
     </hint>
     <hint type="destinationlabel">
@@ -717,6 +723,38 @@
     </hint>
    </hints>
   </connection>
+  <connection>
+   <sender>m_documents_tree</sender>
+   <signal>currentItemChanged(QTreeWidgetItem*,QTreeWidgetItem*)</signal>
+   <receiver>DocumentWindow</receiver>
+   <slot>document_selection_changed(QTreeWidgetItem*)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>159</x>
+     <y>584</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>901</x>
+     <y>551</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>m_documents_tree</sender>
+   <signal>itemChanged(QTreeWidgetItem*,int)</signal>
+   <receiver>DocumentWindow</receiver>
+   <slot>document_item_changed(QTreeWidgetItem*)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>159</x>
+     <y>584</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>901</x>
+     <y>551</y>
+    </hint>
+   </hints>
+  </connection>
  </connections>
  <slots>
   <slot>run_fps_test()</slot>
@@ -728,5 +766,7 @@
   <slot>provider_item_changed(QTreeWidgetItem*)</slot>
   <slot>clear_recent_items()</slot>
   <slot>new_file()</slot>
+  <slot>document_item_changed(QTreeWidgetItem*)</slot>
+  <slot>document_selection_changed(QTreeWidgetItem*)</slot>
  </slots>
 </ui>
