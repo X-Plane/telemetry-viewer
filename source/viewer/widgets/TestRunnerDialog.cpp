@@ -239,7 +239,10 @@ QStringList TestRunnerDialog::get_arguments(const QString &telemetry_path, bool 
 	}
 
 	if(!m_additional_commands->text().isEmpty())
-		result.push_back(m_additional_commands->text());
+	{
+		QStringList commands = m_additional_commands->text().split(' ', Qt::SkipEmptyParts);
+		result.append(commands);
+	}
 
 	return result;
 }
