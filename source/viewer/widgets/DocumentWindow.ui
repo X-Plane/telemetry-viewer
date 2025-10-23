@@ -435,6 +435,7 @@
     <addaction name="m_action_save"/>
     <addaction name="separator"/>
     <addaction name="m_action_close"/>
+    <addaction name="m_action_close_all"/>
     <addaction name="separator"/>
     <addaction name="m_action_exit"/>
    </widget>
@@ -528,6 +529,11 @@
    </property>
    <property name="menuRole">
     <enum>QAction::MenuRole::NoRole</enum>
+   </property>
+  </action>
+  <action name="m_action_close_all">
+   <property name="text">
+    <string>Close All Traces</string>
    </property>
   </action>
  </widget>
@@ -663,7 +669,7 @@
    <sender>m_action_close</sender>
    <signal>triggered()</signal>
    <receiver>DocumentWindow</receiver>
-   <slot>close()</slot>
+   <slot>close_file()</slot>
    <hints>
     <hint type="sourcelabel">
      <x>-1</x>
@@ -755,6 +761,22 @@
     </hint>
    </hints>
   </connection>
+  <connection>
+   <sender>m_action_close_all</sender>
+   <signal>triggered()</signal>
+   <receiver>DocumentWindow</receiver>
+   <slot>close_all_files()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>901</x>
+     <y>551</y>
+    </hint>
+   </hints>
+  </connection>
  </connections>
  <slots>
   <slot>run_fps_test()</slot>
@@ -768,5 +790,7 @@
   <slot>new_file()</slot>
   <slot>document_item_changed(QTreeWidgetItem*)</slot>
   <slot>document_selection_changed(QTreeWidgetItem*)</slot>
+  <slot>close_file()</slot>
+  <slot>close_all_files()</slot>
  </slots>
 </ui>

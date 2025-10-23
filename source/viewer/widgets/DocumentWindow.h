@@ -39,6 +39,9 @@ private Q_SLOTS:
 	[[maybe_unused]] void open_file();
 	[[maybe_unused]] void save_file();
 
+	[[maybe_unused]] void close_file();
+	[[maybe_unused]] void close_all_files();
+
 	[[maybe_unused]] void run_fps_test();
 
 	[[maybe_unused]] void range_changed();
@@ -70,6 +73,7 @@ private:
 	};
 
 	void clear();
+
 	void set_field_enabled(const telemetry_field_lookup &lookup, bool enable);
 	const telemetry_field *lookup_field(const telemetry_field_lookup &lookup, TelemetryDocument *document) const;
 

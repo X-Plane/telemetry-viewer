@@ -295,8 +295,6 @@ void DocumentWindow::dropEvent(QDropEvent *event)
 	}
 }
 
-
-
 void DocumentWindow::clear()
 {
 	setWindowFilePath("");
@@ -320,6 +318,8 @@ void DocumentWindow::clear()
 	}
 
 	m_loaded_documents.clear();
+
+	update_statistics_view();
 }
 
 void DocumentWindow::add_document_by_path(const QString &path, const QString &name)
@@ -563,8 +563,6 @@ void DocumentWindow::add_document(TelemetryDocument *document)
 			if(field)
 			{
 				QColor color = get_color_for_telemetry_field(field, entry);
-				color.setAlpha(128);
-
 				m_chart_view->add_data(field, color, entry->start_offset);
 			}
 		}
@@ -937,6 +935,51 @@ void DocumentWindow::save_file()
 		if(!path.isEmpty())
 			document->document->save(path);
 	}
+}
+
+void DocumentWindow::close_file()
+{
+	if(m_loaded_documents.size() == 1)
+	{
+		clear();
+		return;
+	}
+
+	QTreeWidgetItem *item = m_documents_tree->currentItem();
+	if(!item)
+		return;
+
+	loaded_document *document = item->data(0, Qt::UserRole).value<loaded_document *>();
+	Q_ASSERT(document);
+
+	auto iterator = std::find(m_loaded_documents.begin(), m_loaded_documents.end(), document);
+	Q_ASSERT(iterator != m_loaded_documents.end());
+
+	if(iterator == m_loaded_documents.begin())
+		return;
+
+	for(auto &lookup : m_enabled_fields)
+	{
+		const telemetry_field *field = lookup_field(lookup, document->document);
+		if(!field)
+			continue;
+
+		m_chart_view->remove_data(field);
+	}
+
+	delete item;
+
+	m_loaded_documents.erase(iterator);
+
+	update_statistics_view();
+
+	delete document->document;
+	delete document;
+
+}
+void DocumentWindow::close_all_files()
+{
+	clear();
 }
 
 void DocumentWindow::run_fps_test()
