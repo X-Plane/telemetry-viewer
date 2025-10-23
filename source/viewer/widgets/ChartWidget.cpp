@@ -80,11 +80,6 @@ ChartWidget::ChartWidget(QWidget *parent) :
 	m_category_axis = new QBarCategoryAxis();
 	m_category_axis->append("Fields");
 
-	build_chart_axis(telemetry_unit::time);
-	build_chart_axis(telemetry_unit::value);
-	build_chart_axis(telemetry_unit::fps);
-	build_chart_axis(telemetry_unit::memory);
-
 	m_line_chart = new QChart();
 	m_line_chart->legend()->hide();
 
@@ -93,12 +88,6 @@ ChartWidget::ChartWidget(QWidget *parent) :
 
 	m_line_chart->addAxis(m_timeline_axis, Qt::AlignBottom);
 	m_boxplot_chart->addAxis(m_category_axis, Qt::AlignBottom);
-
-	for(auto &axis : m_axes)
-	{
-		m_line_chart->addAxis(axis->line_axis, axis->alignment);
-		m_boxplot_chart->addAxis(axis->box_axis, axis->alignment);
-	}
 
 	switch(m_type)
 	{
@@ -415,7 +404,7 @@ void ChartWidget::clear()
 
 
 
-void ChartWidget::build_chart_axis(telemetry_unit unit)
+ChartWidget::chart_axis *ChartWidget::build_chart_axis(telemetry_unit unit)
 {
 	auto build_axis = [](telemetry_unit unit) -> QValueAxis * {
 
@@ -448,39 +437,59 @@ void ChartWidget::build_chart_axis(telemetry_unit unit)
 
 	};
 
+	Qt::Alignment alignment = Qt::AlignLeft;
+
+	if(!m_axes.isEmpty())
+		alignment = m_axes.last()->alignment == Qt::AlignLeft ? Qt::AlignRight : Qt::AlignLeft;
+
 	chart_axis *axis = new chart_axis();
 	axis->unit = unit;
 	axis->range_locked = false;
 	axis->visible = false;
-	axis->alignment = Qt::AlignLeft;
-
-	if(unit == telemetry_unit::memory || unit == telemetry_unit::fps)
-		axis->alignment = Qt::AlignRight;
+	axis->alignment = alignment;
 
 	axis->line_axis = build_axis(unit);
 	axis->box_axis = build_axis(unit);
 
+	m_line_chart->addAxis(axis->line_axis, axis->alignment);
+	m_boxplot_chart->addAxis(axis->box_axis, axis->alignment);
+
 	m_axes.append(axis);
+
+	return axis;
 }
 
-ChartWidget::chart_axis *ChartWidget::get_chart_axis_for_field(const telemetry_field *field) const
+ChartWidget::chart_axis *ChartWidget::get_chart_axis_for_field(const telemetry_field *field)
 {
-	telemetry_unit unit = field->get_unit();
-	if(unit == telemetry_unit::duration)
-		unit = telemetry_unit::time;
+	auto get_canonical_unit = [](telemetry_unit base) {
+		telemetry_unit units[] = {
+			telemetry_unit::time,
+			telemetry_unit::value,
+			telemetry_unit::fps,
+			telemetry_unit::memory
+		};
 
-	chart_axis *fallback = nullptr;
+		if(base == telemetry_unit::duration)
+			base = telemetry_unit::time;
+
+		for(auto unit : units)
+		{
+			if(unit == base)
+				return unit;
+		}
+
+		return telemetry_unit::value;
+	};
+
+	const telemetry_unit unit = get_canonical_unit(field->get_unit());
 
 	for(auto &axis : m_axes)
 	{
 		if(axis->unit == unit)
 			return axis;
-
-		if(axis->unit == telemetry_unit::value)
-			fallback = axis;
 	}
 
-	return fallback;
+	return build_chart_axis(unit);
 }
 
 ChartWidget::chart_data &ChartWidget::get_data_for_field(const telemetry_field *field)

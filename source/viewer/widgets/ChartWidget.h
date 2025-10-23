@@ -102,9 +102,9 @@ private:
 	void update_tooltip(const QPointF &point) const;
 	void update_crosshair(const QPointF &point, const QRectF &plot_area) const;
 
-	void build_chart_axis(telemetry_unit unit);
+	chart_axis *build_chart_axis(telemetry_unit unit);
 
-	chart_axis *get_chart_axis_for_field(const telemetry_field *field) const;
+	chart_axis *get_chart_axis_for_field(const telemetry_field *field);
 	chart_data &get_data_for_field(const telemetry_field *field);
 
 	QLineSeries *create_line_series(const telemetry_field *field, int32_t time_offset) const;
