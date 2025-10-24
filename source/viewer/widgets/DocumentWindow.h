@@ -19,7 +19,8 @@ public:
 	~DocumentWindow() override;
 
 	void add_document(TelemetryDocument *document);
-	void add_document_by_path(const QString &path, const QString &name = "");
+	void add_document_with_path(const QString &path, const QString &name = "");
+	void add_document_with_content(std::vector<uint8_t> &&data, const QString &name);
 
 	void restore_state(QSettings &state);
 	void save_state(QSettings &state) const;
@@ -54,6 +55,7 @@ private Q_SLOTS:
 
 	[[maybe_unused]] void document_selection_changed(QTreeWidgetItem *item);
 	[[maybe_unused]] void document_item_changed(QTreeWidgetItem *item);
+	[[maybe_unused]] void document_item_context_menu(const QPoint &pos);
 
 private:
 	struct loaded_document
@@ -73,6 +75,9 @@ private:
 	};
 
 	void clear();
+
+	void save_file(loaded_document *document, bool save_as);
+	void close_file(loaded_document *document);
 
 	void set_field_enabled(const telemetry_field_lookup &lookup, bool enable);
 	const telemetry_field *lookup_field(const telemetry_field_lookup &lookup, TelemetryDocument *document) const;

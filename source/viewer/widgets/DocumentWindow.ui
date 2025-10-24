@@ -72,6 +72,9 @@
         </property>
         <item>
          <widget class="QTreeWidget" name="m_documents_tree">
+          <property name="contextMenuPolicy">
+           <enum>Qt::ContextMenuPolicy::CustomContextMenu</enum>
+          </property>
           <property name="alternatingRowColors">
            <bool>true</bool>
           </property>
@@ -777,6 +780,22 @@
     </hint>
    </hints>
   </connection>
+  <connection>
+   <sender>m_documents_tree</sender>
+   <signal>customContextMenuRequested(QPoint)</signal>
+   <receiver>DocumentWindow</receiver>
+   <slot>document_item_context_menu(QPoint)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>159</x>
+     <y>584</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>901</x>
+     <y>551</y>
+    </hint>
+   </hints>
+  </connection>
  </connections>
  <slots>
   <slot>run_fps_test()</slot>
@@ -792,5 +811,6 @@
   <slot>document_selection_changed(QTreeWidgetItem*)</slot>
   <slot>close_file()</slot>
   <slot>close_all_files()</slot>
+  <slot>document_item_context_menu(QPoint)</slot>
  </slots>
 </ui>

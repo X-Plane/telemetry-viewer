@@ -21,7 +21,7 @@ public:
 	QString get_executable() const;
 	QStringList get_arguments(const QString &telemetry_path, bool escape_paths) const;
 
-	QString get_name() const;
+	QString get_name(int index) const;
 	int get_num_runs() const;
 
 public Q_SLOTS:

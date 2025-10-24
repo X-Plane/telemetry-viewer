@@ -105,7 +105,7 @@ void DocumentWindow::populate_recent_items()
 	{
 		connect(action.get(), &QAction::triggered, [this, action = action.get()] {
 			clear();
-			add_document_by_path(action->data().toString());
+			add_document_with_path(action->data().toString());
 		});
 
 		m_menu_recents->addAction(action.get());
@@ -153,6 +153,8 @@ void DocumentWindow::document_item_changed(QTreeWidgetItem *item)
 	Q_ASSERT(document);
 
 	document->enabled = (item->checkState(0) == Qt::Checked);
+	document->document->set_name(item->text(0));
+
 	update_statistics_view();
 
 	for(auto &lookup : m_enabled_fields)
@@ -167,6 +169,44 @@ void DocumentWindow::document_item_changed(QTreeWidgetItem *item)
 			m_chart_view->hide_data(field);
 	}
 }
+
+void DocumentWindow::document_item_context_menu(const QPoint &pos)
+{
+	QTreeWidgetItem *item = m_documents_tree->itemAt(pos);
+	if(!item)
+		return;
+
+	loaded_document *document = item->data(0, Qt::UserRole).value<loaded_document *>();
+	Q_ASSERT(document);
+
+	QMenu menu;
+	QAction *save_action = menu.addAction("Save");
+	QAction *close_action = nullptr;
+	QAction *close_all_action = nullptr;
+
+	if(document != m_loaded_documents.first())
+		close_action = menu.addAction("Close");
+	else
+		close_all_action = menu.addAction("Close All");
+
+	QAction *selected = menu.exec(m_documents_tree->viewport()->mapToGlobal(pos));
+	if(!selected)
+		return;
+
+
+	if(selected == save_action)
+		save_file(document, true);
+	else if(selected == close_action)
+	{
+		close_file(document);
+		delete item;
+	}
+	else if(selected == close_all_action)
+	{
+		clear();
+	}
+}
+
 
 QColor DocumentWindow::get_color_for_telemetry_field(const telemetry_field *field, const loaded_document *document) const
 {
@@ -291,7 +331,7 @@ void DocumentWindow::dropEvent(QDropEvent *event)
 
 	for(auto &url : urls)
 	{
-		add_document_by_path(url.toLocalFile());
+		add_document_with_path(url.toLocalFile());
 	}
 }
 
@@ -322,22 +362,6 @@ void DocumentWindow::clear()
 	update_statistics_view();
 }
 
-void DocumentWindow::add_document_by_path(const QString &path, const QString &name)
-{
-	try
-	{
-		TelemetryDocument *document = qApp->load_file(path);
-
-		if(!name.isEmpty())
-			document->set_name(name);
-
-		add_document(document);
-	}
-	catch(...)
-	{
-		statusBar()->showMessage("Failed to load telemetry file " + path);
-	}
-}
 
 QAction *DocumentWindow::add_toolbar_widget(QWidget *widget, const QString &text) const
 {
@@ -364,6 +388,38 @@ QAction *DocumentWindow::add_toolbar_spacer() const
 	return toolBar->addWidget(spacer);
 }
 
+
+
+void DocumentWindow::add_document_with_path(const QString &path, const QString &name)
+{
+	try
+	{
+		TelemetryDocument *document = qApp->load_file(path);
+
+		if(!name.isEmpty())
+			document->set_name(name);
+
+		add_document(document);
+	}
+	catch(...)
+	{
+		statusBar()->showMessage("Failed to load telemetry file " + path);
+	}
+}
+
+void DocumentWindow::add_document_with_content(std::vector<uint8_t> &&data, const QString &name)
+{
+	try
+	{
+		TelemetryDocument *document = TelemetryDocument::load_file(std::move(data), name);
+		add_document(document);
+	}
+	catch(...)
+	{
+		statusBar()->showMessage("Failed to load telemetry file");
+	}
+}
+
 void DocumentWindow::add_document(TelemetryDocument *document)
 {
 	const bool is_first_document = m_loaded_documents.isEmpty();
@@ -371,9 +427,6 @@ void DocumentWindow::add_document(TelemetryDocument *document)
 	loaded_document *entry = new loaded_document;
 	entry->document = document;
 	entry->start_offset = 0.0;
-
-	if(!is_first_document)
-		entry->seed = document->get_name();
 
 	if(!is_first_document)
 	{
@@ -393,6 +446,8 @@ void DocumentWindow::add_document(TelemetryDocument *document)
 			if(entry->start_offset <= 0.0 && regions[i].type == TelemetryRegion::Type::Flying)
 				entry->start_offset = root_regions[i].start - regions[i].start;
 		}
+
+		entry->seed = document->get_name();
 	}
 
 	m_loaded_documents.push_back(entry);
@@ -402,6 +457,7 @@ void DocumentWindow::add_document(TelemetryDocument *document)
 		item->setCheckState(0, Qt::Checked);
 		item->setText(0, document->get_name());
 		item->setData(0, Qt::UserRole, QVariant::fromValue(entry));
+		item->setFlags(item->flags() | Qt::ItemIsEditable);
 
 		m_documents_tree->addTopLevelItem(item);
 
@@ -590,7 +646,7 @@ void DocumentWindow::restore_state(QSettings &state)
 			QFileInfo file(path);
 
 			if(file.exists())
-				add_document_by_path(path);
+				add_document_with_path(path);
 		}
 
 		state.endArray();
@@ -923,17 +979,7 @@ void DocumentWindow::save_file()
 		if(!document->document->has_data())
 			continue;
 
-		QString base_path = m_base_dir;
-
-		if(!m_installations.empty() && base_path.isEmpty())
-			base_path = m_installations[m_installation_selector->currentIndex()].get_telemetry_path();
-
-		base_path = base_path % '/' % document->document->get_name();
-
-		QString path = QFileDialog::getSaveFileName(this, tr("Save Telemetry file"), base_path, tr("Telemetry File (*.tlm)"));
-
-		if(!path.isEmpty())
-			document->document->save(path);
+		save_file(document, false);
 	}
 }
 
@@ -952,6 +998,40 @@ void DocumentWindow::close_file()
 	loaded_document *document = item->data(0, Qt::UserRole).value<loaded_document *>();
 	Q_ASSERT(document);
 
+	close_file(document);
+	delete item;
+
+}
+void DocumentWindow::close_all_files()
+{
+	clear();
+}
+
+
+void DocumentWindow::save_file(loaded_document *document, bool save_as)
+{
+	if(save_as || document->document->is_draft())
+	{
+		QString base_path = m_base_dir;
+
+		if(!m_installations.empty() && base_path.isEmpty())
+			base_path = m_installations[m_installation_selector->currentIndex()].get_telemetry_path();
+
+		base_path = base_path % '/' % document->document->get_name();
+
+		QString path = QFileDialog::getSaveFileName(this, tr("Save Telemetry file"), base_path, tr("Telemetry File (*.tlm)"));
+
+		if(!path.isEmpty())
+			document->document->save(path);
+	}
+	else
+	{
+		document->document->save(document->document->get_path());
+	}
+}
+
+void DocumentWindow::close_file(loaded_document *document)
+{
 	auto iterator = std::find(m_loaded_documents.begin(), m_loaded_documents.end(), document);
 	Q_ASSERT(iterator != m_loaded_documents.end());
 
@@ -967,19 +1047,12 @@ void DocumentWindow::close_file()
 		m_chart_view->remove_data(field);
 	}
 
-	delete item;
-
 	m_loaded_documents.erase(iterator);
-
-	update_statistics_view();
 
 	delete document->document;
 	delete document;
 
-}
-void DocumentWindow::close_all_files()
-{
-	clear();
+	update_statistics_view();
 }
 
 void DocumentWindow::run_fps_test()
@@ -1022,10 +1095,20 @@ void DocumentWindow::run_fps_test()
 				return;
 			}
 
-			QFileInfo info(full_result_path);
+			QFile file(full_result_path);
 
-			if(info.isFile())
-				add_document_by_path(full_result_path, runner.get_name());
+			if(file.open(QIODevice::ReadOnly))
+			{
+				const size_t length = file.bytesAvailable();
+
+				std::vector<uint8_t> data;
+				data.resize(length);
+
+				file.read((char *)data.data(), length);
+				file.close();
+
+				add_document_with_content(std::move(data), runner.get_name(i));
+			}
 		}
 
 		statusBar()->showMessage("FPS test finished");
