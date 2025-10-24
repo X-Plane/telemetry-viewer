@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>649</width>
-    <height>266</height>
+    <height>313</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -16,8 +16,8 @@
   <widget class="QDialogButtonBox" name="buttonBox">
    <property name="geometry">
     <rect>
-     <x>300</x>
-     <y>221</y>
+     <x>290</x>
+     <y>270</y>
      <width>341</width>
      <height>41</height>
     </rect>
@@ -35,30 +35,37 @@
      <x>10</x>
      <y>10</y>
      <width>631</width>
-     <height>211</height>
+     <height>261</height>
     </rect>
    </property>
    <layout class="QGridLayout" name="gridLayout">
-    <item row="4" column="1">
-     <widget class="QComboBox" name="m_replay_file"/>
+    <item row="8" column="2">
+     <widget class="QLineEdit" name="m_additional_commands"/>
     </item>
-    <item row="0" column="1">
-     <widget class="QComboBox" name="m_executable"/>
-    </item>
-    <item row="5" column="0">
-     <widget class="QLabel" name="label_6">
+    <item row="8" column="0">
+     <widget class="QLabel" name="label_5">
       <property name="text">
-       <string>Resolution</string>
+       <string>Additional commands</string>
       </property>
      </widget>
     </item>
-    <item row="1" column="1">
-     <widget class="QComboBox" name="m_settings_preset"/>
+    <item row="0" column="2">
+     <widget class="QComboBox" name="m_executable"/>
     </item>
     <item row="2" column="0">
      <widget class="QLabel" name="label_3">
       <property name="text">
        <string>Weather preset</string>
+      </property>
+     </widget>
+    </item>
+    <item row="3" column="2">
+     <widget class="QComboBox" name="m_tod_box"/>
+    </item>
+    <item row="4" column="0">
+     <widget class="QLabel" name="label_4">
+      <property name="text">
+       <string>Replay</string>
       </property>
      </widget>
     </item>
@@ -69,33 +76,10 @@
       </property>
      </widget>
     </item>
-    <item row="6" column="1">
-     <widget class="QLineEdit" name="m_additional_commands"/>
-    </item>
-    <item row="5" column="1">
-     <widget class="QComboBox" name="m_resolution_preset"/>
-    </item>
-    <item row="4" column="0">
-     <widget class="QLabel" name="label_4">
+    <item row="5" column="0">
+     <widget class="QLabel" name="label_6">
       <property name="text">
-       <string>Replay</string>
-      </property>
-     </widget>
-    </item>
-    <item row="6" column="0">
-     <widget class="QLabel" name="label_5">
-      <property name="text">
-       <string>Additional commands</string>
-      </property>
-     </widget>
-    </item>
-    <item row="2" column="1">
-     <widget class="QComboBox" name="m_weather_preset"/>
-    </item>
-    <item row="1" column="0">
-     <widget class="QLabel" name="label_2">
-      <property name="text">
-       <string>Settings Preset</string>
+       <string>Resolution</string>
       </property>
      </widget>
     </item>
@@ -106,8 +90,41 @@
       </property>
      </widget>
     </item>
-    <item row="3" column="1">
-     <widget class="QComboBox" name="m_tod_box"/>
+    <item row="4" column="2">
+     <widget class="QComboBox" name="m_replay_file"/>
+    </item>
+    <item row="7" column="0">
+     <widget class="QLabel" name="label_8">
+      <property name="text">
+       <string>Number of runs</string>
+      </property>
+     </widget>
+    </item>
+    <item row="1" column="0">
+     <widget class="QLabel" name="label_2">
+      <property name="text">
+       <string>Settings Preset</string>
+      </property>
+     </widget>
+    </item>
+    <item row="5" column="2">
+     <widget class="QComboBox" name="m_resolution_preset"/>
+    </item>
+    <item row="1" column="2">
+     <widget class="QComboBox" name="m_settings_preset"/>
+    </item>
+    <item row="2" column="2">
+     <widget class="QComboBox" name="m_weather_preset"/>
+    </item>
+    <item row="7" column="2">
+     <widget class="QSpinBox" name="m_num_runs">
+      <property name="minimum">
+       <number>1</number>
+      </property>
+      <property name="maximum">
+       <number>5</number>
+      </property>
+     </widget>
     </item>
    </layout>
   </widget>
@@ -115,7 +132,7 @@
    <property name="geometry">
     <rect>
      <x>10</x>
-     <y>230</y>
+     <y>280</y>
      <width>121</width>
      <height>24</height>
     </rect>
@@ -159,5 +176,154 @@
     </hint>
    </hints>
   </connection>
+  <connection>
+   <sender>m_copy_to_clipboard</sender>
+   <signal>pressed()</signal>
+   <receiver>TestRunnerDialog</receiver>
+   <slot>copy_to_clipboard()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>70</x>
+     <y>291</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>324</x>
+     <y>156</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>m_additional_commands</sender>
+   <signal>textEdited(QString)</signal>
+   <receiver>TestRunnerDialog</receiver>
+   <slot>setting_text_changed(QString)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>386</x>
+     <y>254</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>324</x>
+     <y>156</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>m_executable</sender>
+   <signal>currentIndexChanged(int)</signal>
+   <receiver>TestRunnerDialog</receiver>
+   <slot>setting_combo_index_changed(int)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>386</x>
+     <y>25</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>324</x>
+     <y>156</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>m_settings_preset</sender>
+   <signal>currentIndexChanged(int)</signal>
+   <receiver>TestRunnerDialog</receiver>
+   <slot>setting_combo_index_changed(int)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>386</x>
+     <y>58</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>324</x>
+     <y>156</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>m_replay_file</sender>
+   <signal>currentIndexChanged(int)</signal>
+   <receiver>TestRunnerDialog</receiver>
+   <slot>setting_combo_index_changed(int)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>386</x>
+     <y>157</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>324</x>
+     <y>156</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>m_resolution_preset</sender>
+   <signal>currentIndexChanged(int)</signal>
+   <receiver>TestRunnerDialog</receiver>
+   <slot>setting_combo_index_changed(int)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>386</x>
+     <y>190</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>324</x>
+     <y>156</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>m_tod_box</sender>
+   <signal>currentIndexChanged(int)</signal>
+   <receiver>TestRunnerDialog</receiver>
+   <slot>setting_combo_index_changed(int)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>386</x>
+     <y>124</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>324</x>
+     <y>156</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>m_weather_preset</sender>
+   <signal>currentIndexChanged(int)</signal>
+   <receiver>TestRunnerDialog</receiver>
+   <slot>setting_combo_index_changed(int)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>386</x>
+     <y>91</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>324</x>
+     <y>156</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>m_num_runs</sender>
+   <signal>valueChanged(int)</signal>
+   <receiver>TestRunnerDialog</receiver>
+   <slot>setting_combo_index_changed(int)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>386</x>
+     <y>223</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>324</x>
+     <y>156</y>
+    </hint>
+   </hints>
+  </connection>
  </connections>
+ <slots>
+  <slot>setting_combo_index_changed(int)</slot>
+  <slot>setting_text_changed(QString)</slot>
+  <slot>copy_to_clipboard()</slot>
+ </slots>
 </ui>

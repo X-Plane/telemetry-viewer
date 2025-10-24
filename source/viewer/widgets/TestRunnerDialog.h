@@ -22,15 +22,21 @@ public:
 	QStringList get_arguments(const QString &telemetry_path, bool escape_paths) const;
 
 	QString get_name() const;
+	int get_num_runs() const;
+
+public Q_SLOTS:
+	[[maybe_unused]] void setting_combo_index_changed(int index);
+	[[maybe_unused]] void setting_text_changed(const QString &filepath);
+
+	[[maybe_unused]] void copy_to_clipboard();
 
 private:
 	uint32_t get_fps_test() const;
 
-	void combo_box_selection_changed(int index);
-	void line_text_changed(const QString &text);
-
 	void load_settings();
 	void save_settings();
+
+	bool m_initialized = false;
 
 	XplaneInstallation *m_installation;
 

@@ -57,22 +57,7 @@ TestRunnerDialog::TestRunnerDialog(XplaneInstallation *installation) :
 	m_resolution_preset->addItem("Window 1440p");
 
 	load_settings();
-
-	connect(m_executable, qOverload<int>(&QComboBox::currentIndexChanged), this, &TestRunnerDialog::combo_box_selection_changed);
-	connect(m_replay_file, qOverload<int>(&QComboBox::currentIndexChanged), this, &TestRunnerDialog::combo_box_selection_changed);
-	connect(m_weather_preset, qOverload<int>(&QComboBox::currentIndexChanged), this, &TestRunnerDialog::combo_box_selection_changed);
-	connect(m_settings_preset, qOverload<int>(&QComboBox::currentIndexChanged), this, &TestRunnerDialog::combo_box_selection_changed);
-	connect(m_resolution_preset, qOverload<int>(&QComboBox::currentIndexChanged), this, &TestRunnerDialog::combo_box_selection_changed);
-
-	connect(m_additional_commands, &QLineEdit::textChanged, this, &TestRunnerDialog::line_text_changed);
-
-	connect(m_copy_to_clipboard, &QAbstractButton::pressed, [this] {
-
-		QStringList arguments = get_arguments("", true);
-
-		QClipboard *clipboard = QGuiApplication::clipboard();
-		clipboard->setText(arguments.join(' '));
-	});
+	m_initialized = true;
 }
 
 void TestRunnerDialog::load_settings()
@@ -130,6 +115,7 @@ void TestRunnerDialog::load_settings()
 		m_tod_box->setCurrentIndex(tod_preset);
 	}
 
+	m_num_runs->setValue(settings.value("num_runs", 1).toInt());
 	m_additional_commands->setText(settings.value("additional_commands", "").toString());
 
 	settings.endGroup();
@@ -137,6 +123,9 @@ void TestRunnerDialog::load_settings()
 
 void TestRunnerDialog::save_settings()
 {
+	if(!m_initialized)
+		return;
+
 	QSettings settings = open_settings();
 
 	settings.beginGroup("test_runner");
@@ -149,6 +138,7 @@ void TestRunnerDialog::save_settings()
 	settings.setValue("resolution_preset", m_resolution_preset->currentIndex());
 	settings.setValue("tod", m_tod_box->currentIndex());
 
+	settings.setValue("num_runs", m_num_runs->value());
 	settings.setValue("additional_commands", m_additional_commands->text());
 
 	settings.endGroup();
@@ -156,13 +146,21 @@ void TestRunnerDialog::save_settings()
 
 
 
-void TestRunnerDialog::combo_box_selection_changed(int index)
+void TestRunnerDialog::setting_combo_index_changed(int index)
 {
 	save_settings();
 }
-void TestRunnerDialog::line_text_changed(const QString &text)
+void TestRunnerDialog::setting_text_changed(const QString &text)
 {
 	save_settings();
+}
+
+void TestRunnerDialog::copy_to_clipboard()
+{
+	QStringList arguments = get_arguments("", true);
+
+	QClipboard *clipboard = QGuiApplication::clipboard();
+	clipboard->setText(arguments.join(' '));
 }
 
 
@@ -254,3 +252,9 @@ QString TestRunnerDialog::get_name() const
 
 	return name;
 }
+
+int TestRunnerDialog::get_num_runs() const
+{
+	return std::clamp(m_num_runs->value(), m_num_runs->minimum(), m_num_runs->maximum());
+}
+

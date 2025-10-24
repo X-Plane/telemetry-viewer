@@ -989,36 +989,46 @@ void DocumentWindow::run_fps_test()
 
 	if(runner.exec())
 	{
-		statusBar()->showMessage("Waiting for the FPS test to finish");
+		const int runs = runner.get_num_runs();
 
-		QString result_path = QDir::tempPath() + "/xplane_telemetry";
-		QString full_result_path = result_path + ".tlm"; // X-Plane is overly helpful by putting the .tlm extension in for us
-
-		// Remove any leftover old telemetry file
+		for(int i = 0; i < runs; i ++)
 		{
-			QFile file;
-			file.remove(full_result_path);
-		}
+			statusBar()->showMessage("Waiting for the FPS test to finish");
 
-		QProcess process;
-		process.start(runner.get_executable(), runner.get_arguments(result_path, false));
+			QString result_path = QDir::tempPath() + "/xplane_telemetry";
+			QString full_result_path = result_path + ".tlm"; // X-Plane is overly helpful by putting the .tlm extension in for us
 
-		if(!process.waitForStarted())
-		{
-			statusBar()->showMessage("Failed to start FPS test!");
-			return;
-		}
+			// Remove any leftover old telemetry file
+			{
+				QFile file;
+				file.remove(full_result_path);
+			}
 
-		while(!process.waitForFinished())
-			std::this_thread::sleep_for(std::chrono::seconds(1));
+			QProcess process;
+			process.start(runner.get_executable(), runner.get_arguments(result_path, false));
 
-		if(process.exitStatus() == QProcess::NormalExit)
-		{
+			if(!process.waitForStarted())
+			{
+				statusBar()->showMessage("Failed to start FPS test!");
+				return;
+			}
+
+			while(!process.waitForFinished())
+				std::this_thread::sleep_for(std::chrono::seconds(1));
+
+			if(process.exitStatus() != QProcess::NormalExit)
+			{
+				statusBar()->showMessage("FPS test exited with non 0 exit status");
+				return;
+			}
+
 			QFileInfo info(full_result_path);
 
 			if(info.isFile())
 				add_document_by_path(full_result_path, runner.get_name());
 		}
+
+		statusBar()->showMessage("FPS test finished");
 	}
 }
 
