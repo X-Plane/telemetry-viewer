@@ -443,8 +443,11 @@ void DocumentWindow::add_document(TelemetryDocument *document)
 			if(root_regions[i].type != regions[i].type || root_regions[i].name != regions[i].name)
 				throw std::range_error("Telemetry document has different timing regions");
 
-			if(entry->start_offset <= 0.0 && regions[i].type == TelemetryRegion::Type::Flying)
-				entry->start_offset = root_regions[i].start - regions[i].start;
+			if(regions[i].type == TelemetryRegion::Type::Flying)
+			{
+				entry->start_offset = regions[i].start - root_regions[i].start;
+				break;
+			}
 		}
 
 		entry->seed = document->get_name();
@@ -795,7 +798,7 @@ void DocumentWindow::update_statistics_view()
 
 		try
 		{
-			PerformanceCalculator perf(field, m_chart_view->get_start(), m_chart_view->get_end());
+			PerformanceCalculator perf(field, m_chart_view->get_start() + document->start_offset, m_chart_view->get_end() + document->start_offset);
 
 			QBarSet *set = new QBarSet(QString::fromStdString(field.get_title()));
 			set->setColor(get_color_for_telemetry_field(&field, document));

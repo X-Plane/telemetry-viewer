@@ -185,6 +185,9 @@ void ChartWidget::update_tooltip(const QPointF &point) const
 
 	for(auto &data : m_data)
 	{
+		if(data.is_hidden)
+			continue;
+
 		const auto &points = data.field->get_data_points();
 
 		if(points.empty())
@@ -194,7 +197,7 @@ void ChartWidget::update_tooltip(const QPointF &point) const
 		{
 			try
 			{
-				telemetry_data_point data_point = data.field->get_data_point_closest_to_time(chart_point.x() + data.time_offset);
+				telemetry_data_point data_point = data.field->get_data_point_closest_to_time(chart_point.x() - data.time_offset);
 				data_points.append(qMakePair(data.field, data_point));
 			}
 			catch(...)
@@ -319,7 +322,7 @@ void ChartWidget::add_data(const telemetry_field *field, QColor color, int32_t t
 	data.color = color;
 	data.time_offset = time_offset;
 
-	data.line_series = create_line_series(data.field, time_offset);
+	data.line_series = create_line_series(data.field, -time_offset);
 	data.line_series->setColor(data.color);
 
 	data.box_set = new QBoxSet();
