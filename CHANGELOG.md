@@ -1,3 +1,13 @@
+# v0.6.1
+Mostly a quality of life release.
+
+ - Files can be renamed in the trace list on the left
+ - Added functions to close and save individual files
+ - Deselecting a file in the documents list removes it from the chart hover UI
+ - Multiple CLI commands weren't properly supported
+ - Multiple tests can be run back to back for a "best of X" configuration
+ - Safe mode can be enabled from the test runner UI
+
 # v0.6.0
 This release brings with it the ability to open multiple traces and overlay them on top of each other to better compare performance tests
 
