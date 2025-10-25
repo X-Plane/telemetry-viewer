@@ -6,141 +6,169 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>649</width>
-    <height>313</height>
+    <width>682</width>
+    <height>221</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>Dialog</string>
   </property>
-  <widget class="QDialogButtonBox" name="buttonBox">
-   <property name="geometry">
-    <rect>
-     <x>290</x>
-     <y>270</y>
-     <width>341</width>
-     <height>41</height>
-    </rect>
-   </property>
-   <property name="orientation">
-    <enum>Qt::Orientation::Horizontal</enum>
-   </property>
-   <property name="standardButtons">
-    <set>QDialogButtonBox::StandardButton::Cancel|QDialogButtonBox::StandardButton::Ok</set>
-   </property>
-  </widget>
-  <widget class="QWidget" name="gridLayoutWidget">
-   <property name="geometry">
-    <rect>
-     <x>10</x>
-     <y>10</y>
-     <width>631</width>
-     <height>261</height>
-    </rect>
-   </property>
-   <layout class="QGridLayout" name="gridLayout">
-    <item row="8" column="2">
-     <widget class="QLineEdit" name="m_additional_commands"/>
-    </item>
-    <item row="8" column="0">
-     <widget class="QLabel" name="label_5">
-      <property name="text">
-       <string>Additional commands</string>
-      </property>
-     </widget>
-    </item>
-    <item row="0" column="2">
-     <widget class="QComboBox" name="m_executable"/>
-    </item>
-    <item row="2" column="0">
-     <widget class="QLabel" name="label_3">
-      <property name="text">
-       <string>Weather preset</string>
-      </property>
-     </widget>
-    </item>
-    <item row="3" column="2">
-     <widget class="QComboBox" name="m_tod_box"/>
-    </item>
-    <item row="4" column="0">
-     <widget class="QLabel" name="label_4">
-      <property name="text">
-       <string>Replay</string>
-      </property>
-     </widget>
-    </item>
-    <item row="0" column="0">
-     <widget class="QLabel" name="label">
-      <property name="text">
-       <string>Executable</string>
-      </property>
-     </widget>
-    </item>
-    <item row="5" column="0">
-     <widget class="QLabel" name="label_6">
-      <property name="text">
-       <string>Resolution</string>
-      </property>
-     </widget>
-    </item>
-    <item row="3" column="0">
-     <widget class="QLabel" name="label_7">
-      <property name="text">
-       <string>Time of day</string>
-      </property>
-     </widget>
-    </item>
-    <item row="4" column="2">
-     <widget class="QComboBox" name="m_replay_file"/>
-    </item>
-    <item row="7" column="0">
-     <widget class="QLabel" name="label_8">
-      <property name="text">
-       <string>Number of runs</string>
-      </property>
-     </widget>
-    </item>
-    <item row="1" column="0">
-     <widget class="QLabel" name="label_2">
-      <property name="text">
-       <string>Settings Preset</string>
-      </property>
-     </widget>
-    </item>
-    <item row="5" column="2">
-     <widget class="QComboBox" name="m_resolution_preset"/>
-    </item>
-    <item row="1" column="2">
-     <widget class="QComboBox" name="m_settings_preset"/>
-    </item>
-    <item row="2" column="2">
-     <widget class="QComboBox" name="m_weather_preset"/>
-    </item>
-    <item row="7" column="2">
-     <widget class="QSpinBox" name="m_num_runs">
-      <property name="minimum">
-       <number>1</number>
-      </property>
-      <property name="maximum">
-       <number>5</number>
-      </property>
-     </widget>
-    </item>
-   </layout>
-  </widget>
-  <widget class="QPushButton" name="m_copy_to_clipboard">
-   <property name="geometry">
-    <rect>
-     <x>10</x>
-     <y>280</y>
-     <width>121</width>
-     <height>24</height>
-    </rect>
-   </property>
-   <property name="text">
-    <string>Copy to clipboard</string>
-   </property>
-  </widget>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <item>
+    <layout class="QGridLayout" name="gridLayout">
+     <item row="4" column="3">
+      <widget class="QLabel" name="label_3">
+       <property name="text">
+        <string>Weather preset</string>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="2">
+      <widget class="QComboBox" name="m_replay_file"/>
+     </item>
+     <item row="0" column="0">
+      <widget class="QLabel" name="label">
+       <property name="text">
+        <string>Executable</string>
+       </property>
+      </widget>
+     </item>
+     <item row="4" column="2">
+      <widget class="QComboBox" name="m_resolution_preset"/>
+     </item>
+     <item row="4" column="0">
+      <widget class="QLabel" name="label_6">
+       <property name="text">
+        <string>Resolution</string>
+       </property>
+      </widget>
+     </item>
+     <item row="9" column="0">
+      <widget class="QLabel" name="label_5">
+       <property name="text">
+        <string>Commands</string>
+       </property>
+      </widget>
+     </item>
+     <item row="6" column="2">
+      <widget class="QWidget" name="widget" native="true">
+       <layout class="QHBoxLayout" name="horizontalLayout">
+        <item>
+         <widget class="QCheckBox" name="m_safe_plugins">
+          <property name="text">
+           <string>Plugins</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QCheckBox" name="m_safe_scenery">
+          <property name="text">
+           <string>Scenery</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QCheckBox" name="m_safe_art_controls">
+          <property name="text">
+           <string>Art controls</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </item>
+     <item row="4" column="4">
+      <widget class="QComboBox" name="m_weather_preset"/>
+     </item>
+     <item row="2" column="4">
+      <widget class="QComboBox" name="m_tod_box"/>
+     </item>
+     <item row="2" column="0">
+      <widget class="QLabel" name="label_4">
+       <property name="text">
+        <string>Replay</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="2">
+      <widget class="QComboBox" name="m_executable"/>
+     </item>
+     <item row="6" column="4">
+      <widget class="QSpinBox" name="m_num_runs">
+       <property name="minimum">
+        <number>1</number>
+       </property>
+       <property name="maximum">
+        <number>5</number>
+       </property>
+      </widget>
+     </item>
+     <item row="6" column="0">
+      <widget class="QLabel" name="label_9">
+       <property name="text">
+        <string>Safe mode</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="3">
+      <widget class="QLabel" name="label_2">
+       <property name="text">
+        <string>Settings Preset</string>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="3">
+      <widget class="QLabel" name="label_7">
+       <property name="text">
+        <string>Time of day</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="4">
+      <widget class="QComboBox" name="m_settings_preset"/>
+     </item>
+     <item row="6" column="3">
+      <widget class="QLabel" name="label_8">
+       <property name="text">
+        <string>Number of runs</string>
+       </property>
+      </widget>
+     </item>
+     <item row="9" column="2" colspan="3">
+      <widget class="QLineEdit" name="m_additional_commands"/>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="QWidget" name="widget_2" native="true">
+     <property name="minimumSize">
+      <size>
+       <width>0</width>
+       <height>40</height>
+      </size>
+     </property>
+     <layout class="QHBoxLayout" name="horizontalLayout_2">
+      <item>
+       <widget class="QPushButton" name="m_copy_to_clipboard">
+        <property name="text">
+         <string>Copy to clipboard</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QDialogButtonBox" name="buttonBox">
+        <property name="orientation">
+         <enum>Qt::Orientation::Horizontal</enum>
+        </property>
+        <property name="standardButtons">
+         <set>QDialogButtonBox::StandardButton::Cancel|QDialogButtonBox::StandardButton::Ok</set>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+  </layout>
  </widget>
  <resources/>
  <connections>
@@ -320,10 +348,59 @@
     </hint>
    </hints>
   </connection>
+  <connection>
+   <sender>m_safe_plugins</sender>
+   <signal>stateChanged(int)</signal>
+   <receiver>TestRunnerDialog</receiver>
+   <slot>vanilla_toggle(int)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>422</x>
+     <y>237</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>320</x>
+     <y>169</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>m_safe_scenery</sender>
+   <signal>stateChanged(int)</signal>
+   <receiver>TestRunnerDialog</receiver>
+   <slot>vanilla_toggle(int)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>494</x>
+     <y>237</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>320</x>
+     <y>169</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>m_safe_art_controls</sender>
+   <signal>stateChanged(int)</signal>
+   <receiver>TestRunnerDialog</receiver>
+   <slot>vanilla_toggle(int)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>578</x>
+     <y>237</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>320</x>
+     <y>169</y>
+    </hint>
+   </hints>
+  </connection>
  </connections>
  <slots>
   <slot>setting_combo_index_changed(int)</slot>
   <slot>setting_text_changed(QString)</slot>
   <slot>copy_to_clipboard()</slot>
+  <slot>vanilla_toggle(int)</slot>
  </slots>
 </ui>

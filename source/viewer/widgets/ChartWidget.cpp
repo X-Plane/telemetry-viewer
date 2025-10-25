@@ -197,7 +197,7 @@ void ChartWidget::update_tooltip(const QPointF &point) const
 		{
 			try
 			{
-				telemetry_data_point data_point = data.field->get_data_point_closest_to_time(chart_point.x() - data.time_offset);
+				telemetry_data_point data_point = data.field->get_data_point_closest_to_time(chart_point.x() + data.time_offset);
 				data_points.append(qMakePair(data.field, data_point));
 			}
 			catch(...)

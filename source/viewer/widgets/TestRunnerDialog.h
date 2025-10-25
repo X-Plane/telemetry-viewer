@@ -27,6 +27,7 @@ public:
 public Q_SLOTS:
 	[[maybe_unused]] void setting_combo_index_changed(int index);
 	[[maybe_unused]] void setting_text_changed(const QString &filepath);
+	[[maybe_unused]] void vanilla_toggle(int state);
 
 	[[maybe_unused]] void copy_to_clipboard();
 

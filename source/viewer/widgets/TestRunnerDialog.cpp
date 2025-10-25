@@ -118,6 +118,10 @@ void TestRunnerDialog::load_settings()
 	m_num_runs->setValue(settings.value("num_runs", 1).toInt());
 	m_additional_commands->setText(settings.value("additional_commands", "").toString());
 
+	m_safe_art_controls->setChecked(settings.value("safe_art_controls", false).toBool());
+	m_safe_plugins->setChecked(settings.value("safe_plugins", false).toBool());
+	m_safe_scenery->setChecked(settings.value("safe_scenery", true).toBool());
+
 	settings.endGroup();
 }
 
@@ -141,6 +145,10 @@ void TestRunnerDialog::save_settings()
 	settings.setValue("num_runs", m_num_runs->value());
 	settings.setValue("additional_commands", m_additional_commands->text());
 
+	settings.setValue("safe_art_controls", m_safe_art_controls->isChecked());
+	settings.setValue("safe_plugins", m_safe_plugins->isChecked());
+	settings.setValue("safe_scenery", m_safe_scenery->isChecked());
+
 	settings.endGroup();
 }
 
@@ -154,6 +162,11 @@ void TestRunnerDialog::setting_text_changed(const QString &text)
 {
 	save_settings();
 }
+void TestRunnerDialog::vanilla_toggle(int state)
+{
+	save_settings();
+}
+
 
 void TestRunnerDialog::copy_to_clipboard()
 {
@@ -186,6 +199,18 @@ QStringList TestRunnerDialog::get_arguments(const QString &telemetry_path, bool 
 	result.push_back("--no_prefs");
 	result.push_back("--event_trace");
 	result.push_back("--fps_test=" + QString::asprintf("%i", get_fps_test()));
+
+	QStringList safe_modes;
+
+	if(m_safe_scenery->isChecked())
+		safe_modes.push_back("SCN");
+	if(m_safe_plugins->isChecked())
+		safe_modes.push_back("PLG");
+	if(m_safe_art_controls->isChecked())
+		safe_modes.push_back("ART");
+
+	if(!safe_modes.empty())
+		result.push_back("--safe_mode=" + safe_modes.join(","));
 
 	auto make_full_path_happy_for_xplane = [](const QString &path) {
 #if WIN
